@@ -13,6 +13,7 @@ import UIKit
     private let tickOddFeedback = UIImpactFeedbackGenerator(style: .medium)
     private let tickEvenFeedback = UIImpactFeedbackGenerator(style: .light)
     private var lastRatchetHaptic: TimeInterval = -.infinity
+    private var ratchetCadence = RatchetCadence()
     private var interrupted = false
     private var interruptionObserver: NSObjectProtocol?
 
@@ -38,10 +39,10 @@ import UIKit
         AudioSessionCoordinator.shared.prepareAmbient()
     }
 
-    private func play(_ name: String, repeats: Int = 1) {
+    private func play(_ name: String, repeats: Int = 1, rate: Float = 1) {
         guard !interrupted, UIApplication.shared.applicationState == .active else { return }
         let sounds = self.sounds
-        AudioSessionCoordinator.shared.perform { sounds.play(name, repeats: repeats) }
+        AudioSessionCoordinator.shared.perform { sounds.play(name, repeats: repeats, rate: rate) }
     }
 
     func tick(odd: Bool, sound: Bool, haptics: Bool) {
@@ -55,8 +56,9 @@ import UIKit
 
     func ratchet(notches: Int, haptics: Bool) {
         guard notches > 0 else { return }
-        play("ratchet", repeats: min(notches, 3))
         let now = ProcessInfo.processInfo.systemUptime
+        let cadence = ratchetCadence.update(notches: notches, at: now)
+        play("ratchet", repeats: cadence.repeats, rate: cadence.rate)
         if haptics, now - lastRatchetHaptic >= 0.03 {
             lastRatchetHaptic = now
             ratchetFeedback.impactOccurred()
@@ -67,8 +69,27 @@ import UIKit
     func bell() { play("bell") }
 
     func stop() {
+        ratchetCadence = RatchetCadence()
         let sounds = self.sounds
         AudioSessionCoordinator.shared.perform { sounds.stop() }
+    }
+}
+
+/// Measures elapsed time per crossed notch, independently of display refresh rate.
+struct RatchetCadence {
+    private var previousTime: TimeInterval?
+    mutating func update(notches: Int, at time: TimeInterval) -> (repeats: Int, rate: Float) {
+        let elapsed = previousTime.map { time - $0 }
+        previousTime = time
+        guard let elapsed, elapsed > 0, elapsed < 0.2 else {
+            return (min(3, max(1, notches)), 1)
+        }
+        let interval = elapsed / Double(max(1, notches))
+        // Slow turns retain isolated original clicks. Quick turns produce a
+        // short rolling burst whose spacing shrinks with measured dial speed.
+        guard interval < 0.065 else { return (1, 1) }
+        let speed = min(1, max(0, (0.065 - interval) / 0.05))
+        return (speed > 0.4 ? 3 : 2, Float(1 + speed))
     }
 }
 
@@ -78,6 +99,7 @@ protocol AudioClipPlaying: AnyObject {
     var isPlaying: Bool { get }
     var currentTime: TimeInterval { get set }
     var numberOfLoops: Int { get set }
+    var rate: Float { get set }
     @discardableResult func play() -> Bool
     func stop()
 }
@@ -91,18 +113,19 @@ final class SoundPlayers: @unchecked Sendable {
         for name in ["tickOdd", "tickEven", "ratchet", "bell"] {
             if let url = Bundle.main.url(forResource: name, withExtension: "wav"),
                let player = try? AVAudioPlayer(contentsOf: url) {
+                player.enableRate = name == "ratchet"
                 player.prepareToPlay()
                 players[name] = player
             }
         }
     }
-    func play(_ name: String, repeats: Int = 1) {
+    func play(_ name: String, repeats: Int = 1, rate: Float = 1) {
         dispatchPrecondition(condition: .notOnQueue(.main))
         if name == "bell" { players["tickOdd"]?.stop(); players["tickEven"]?.stop() }
         guard let player = players[name] else { return }
-        // Let the audible transient finish instead of repeatedly rewinding it.
-        // Fast jumps use immediate playback of up to three copies of the same
-        // short sample. No scheduled voices or delayed backlog are created.
+        // Adjust an active burst without rewinding its audible transient.
+        // Finite loops keep the tail below 66 ms without timers or a backlog.
+        if name == "ratchet" { player.rate = min(2, max(1, rate)) }
         if name == "ratchet", player.isPlaying { return }
         player.numberOfLoops = name == "ratchet" ? min(3, max(1, repeats)) - 1 : 0
         player.currentTime = 0

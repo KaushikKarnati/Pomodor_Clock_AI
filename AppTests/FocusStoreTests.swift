@@ -226,6 +226,30 @@ private final class AudioTrace: @unchecked Sendable {
 }
 
 final class RatchetPlaybackTests: XCTestCase {
+    func testSameNotchCountGetsFasterCadenceWhenTurnedFaster() {
+        var slow = RatchetCadence()
+        var fast = RatchetCadence()
+        _ = slow.update(notches: 1, at: 1)
+        _ = fast.update(notches: 1, at: 1)
+        let isolated = slow.update(notches: 1, at: 1.15)
+        let rolling = fast.update(notches: 1, at: 1.015)
+        XCTAssertEqual(isolated.repeats, 1)
+        XCTAssertEqual(isolated.rate, 1)
+        XCTAssertEqual(rolling.repeats, 3)
+        XCTAssertEqual(rolling.rate, 2, accuracy: 0.001)
+        let resumed = fast.update(notches: 1, at: 2)
+        XCTAssertEqual(resumed.repeats, 1)
+        XCTAssertEqual(resumed.rate, 1)
+    }
+
+    func testCrossedNotchesDetermineSpeedRatherThanCallbackFrequency() {
+        var cadence = RatchetCadence()
+        _ = cadence.update(notches: 1, at: 1)
+        let burst = cadence.update(notches: 4, at: 1.06)
+        XCTAssertEqual(burst.repeats, 3)
+        XCTAssertEqual(burst.rate, 2, accuracy: 0.001)
+    }
+
     func testRapidRequestsDoNotCutOffAnAudibleClick() {
         let done = expectation(description: "Ratchet playback")
         DispatchQueue.global().async {
@@ -233,7 +257,8 @@ final class RatchetPlaybackTests: XCTestCase {
             let sounds = SoundPlayers(players: ["ratchet": clip])
             sounds.play("ratchet")
             clip.currentTime = 0.005
-            for _ in 0..<100 { sounds.play("ratchet", repeats: 3) }
+            for _ in 0..<100 { sounds.play("ratchet", repeats: 3, rate: 2) }
+            XCTAssertEqual(clip.rate, 2)
             XCTAssertEqual(clip.starts, 1)
             XCTAssertEqual(clip.currentTime, 0.005)
             clip.isPlaying = false // Natural completion allows the next click.
@@ -267,6 +292,7 @@ private final class TestAudioClip: AudioClipPlaying {
     var isPlaying = false
     var currentTime: TimeInterval = 0
     var numberOfLoops = 0
+    var rate: Float = 1
     var starts = 0
     func play() -> Bool { starts += 1; isPlaying = true; return true }
     func stop() { isPlaying = false }
