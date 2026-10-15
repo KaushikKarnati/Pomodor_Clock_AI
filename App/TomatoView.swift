@@ -7,7 +7,7 @@ struct TomatoView: View {
     var isListening: Bool = false
     var isRattling: Bool = false
     var onChange: (Int) -> Void
-    var onRatchet: (Int) -> Void
+    var onRatchet: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
@@ -90,9 +90,8 @@ struct TomatoView: View {
                         dragValue = next
                         let notch = Int(next.rounded())
                         if notch != lastNotch {
-                            let crossed = abs(notch - (lastNotch ?? notch))
                             lastNotch = notch
-                            onRatchet(max(1, crossed))
+                            onRatchet()
                         }
                     }
                     .onEnded { _ in
@@ -145,7 +144,7 @@ struct TomatoView: View {
             .accessibilityAdjustableAction { direction in
                 guard canAdjust else { return }
                 let value = Int(shown.rounded()) + (direction == .increment ? 1 : -1)
-                onRatchet(1)
+                onRatchet()
                 onChange(min(60, max(0, value)))
             }
         }
@@ -191,7 +190,7 @@ struct TomatoView: View {
                 try? await Task.sleep(for: .seconds(duration / Double(steps)))
                 guard !Task.isCancelled else { return }
                 if Int(from + (destination - from) * Double(step) / Double(steps)) != Int(from) {
-                    onRatchet(1)
+                    onRatchet()
                 }
             }
             winding = nil

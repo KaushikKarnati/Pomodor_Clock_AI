@@ -3,7 +3,7 @@ import UIKit
 
 @MainActor protocol FocusAudioPlaying {
     func tick(odd: Bool, sound: Bool, haptics: Bool)
-    func ratchet(notches: Int, haptics: Bool)
+    func ratchet(haptics: Bool)
     func bell()
     func stop()
 }
@@ -12,7 +12,7 @@ import UIKit
     private let ratchetFeedback = UIImpactFeedbackGenerator(style: .rigid)
     private let tickOddFeedback = UIImpactFeedbackGenerator(style: .medium)
     private let tickEvenFeedback = UIImpactFeedbackGenerator(style: .light)
-    private var lastRatchetHaptic: TimeInterval = -.infinity
+    private var lastRatchet = Date.distantPast
     private var interrupted = false
     private var interruptionObserver: NSObjectProtocol?
 
@@ -53,18 +53,11 @@ import UIKit
         }
     }
 
-    func ratchet(notches: Int, haptics: Bool) {
-        guard notches > 0, !interrupted, UIApplication.shared.applicationState == .active else { return }
-        let requestedAt = ProcessInfo.processInfo.systemUptime
-        let sounds = self.sounds
-        AudioSessionCoordinator.shared.perform {
-            // Do not replay old gesture events after slow audio-session transitions.
-            guard ProcessInfo.processInfo.systemUptime - requestedAt < 0.1 else { return }
-            sounds.ratchet(notches: notches)
-        }
-        // Haptics have their own rate limit; it must not discard audible clicks.
-        if haptics, requestedAt - lastRatchetHaptic >= 0.03 {
-            lastRatchetHaptic = requestedAt
+    func ratchet(haptics: Bool) {
+        guard Date.now.timeIntervalSince(lastRatchet) > 0.03 else { return }
+        lastRatchet = .now
+        play("ratchet")
+        if haptics {
             ratchetFeedback.impactOccurred()
             ratchetFeedback.prepare()
         }
@@ -82,40 +75,16 @@ import UIKit
 /// prepareToPlay/play. Haptic generators remain on the main actor.
 private final class SoundPlayers: @unchecked Sendable {
     private var players: [String: AVAudioPlayer] = [:]
-    private var ratchetPlayers: [AVAudioPlayer] = []
-    private var ratchetIndex = 0
-    private var ratchetSchedule = RatchetSchedule()
     func prepare() {
         dispatchPrecondition(condition: .notOnQueue(.main))
-        for name in ["tickOdd", "tickEven", "bell"] {
+        for name in ["tickOdd", "tickEven", "ratchet", "bell"] {
             if let url = Bundle.main.url(forResource: name, withExtension: "wav"),
                let player = try? AVAudioPlayer(contentsOf: url) {
                 player.prepareToPlay()
                 players[name] = player
             }
         }
-        if let url = Bundle.main.url(forResource: "ratchet", withExtension: "wav") {
-            // A 22 ms sample plus the 43 ms scheduling horizon needs at most nine
-            // voices at 8 ms spacing. Twelve prewarmed players leave headroom.
-            for _ in 0..<12 {
-                if let player = try? AVAudioPlayer(contentsOf: url) {
-                    player.prepareToPlay()
-                    ratchetPlayers.append(player)
-                }
-            }
-        }
     }
-    func ratchet(notches: Int) {
-        dispatchPrecondition(condition: .notOnQueue(.main))
-        guard let clock = ratchetPlayers.first else { return }
-        for time in ratchetSchedule.clicks(crossedNotches: notches, at: clock.deviceCurrentTime) {
-            let player = ratchetPlayers[ratchetIndex]
-            ratchetIndex = (ratchetIndex + 1) % ratchetPlayers.count
-            player.currentTime = 0
-            player.play(atTime: time)
-        }
-    }
-
     func play(_ name: String) {
         dispatchPrecondition(condition: .notOnQueue(.main))
         if name == "bell" { players["tickOdd"]?.stop(); players["tickEven"]?.stop() }
@@ -126,9 +95,6 @@ private final class SoundPlayers: @unchecked Sendable {
     func stop() {
         dispatchPrecondition(condition: .notOnQueue(.main))
         players.values.forEach { $0.stop() }
-        ratchetPlayers.forEach { $0.stop() }
-        ratchetSchedule.reset()
-        ratchetIndex = 0
     }
 }
 
