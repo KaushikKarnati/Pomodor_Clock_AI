@@ -15,6 +15,7 @@ import Observation
     private var recognition: SFSpeechRecognitionTask?
     private var silence: Task<Void, Never>?
     private var generation = UUID()
+    private var ownsAudioSession = false
     func start() async {
         guard !isRecording, !isPreparing else { return }
         isPreparing = true; error = nil; text = ""
@@ -32,9 +33,9 @@ import Observation
             error = "On-device English speech recognition isn't available. Type your request below."; return
         }
         do {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetoothHFP])
-            try session.setActive(true)
+            ownsAudioSession = true
+            try await AudioSessionCoordinator.shared.prepareRecording()
+            guard generation == token else { return }
             let audioEngine = AVAudioEngine()
             let bufferRequest = SFSpeechAudioBufferRecognitionRequest()
             bufferRequest.requiresOnDeviceRecognition = true; bufferRequest.shouldReportPartialResults = true
@@ -57,7 +58,11 @@ import Observation
             }
             audioEngine.prepare(); try audioEngine.start(); isRecording = true
             armSilence(seconds: 12, token: token)
-        } catch { self.error = error.localizedDescription; stop() }
+        } catch {
+            guard generation == token else { return }
+            self.error = error.localizedDescription
+            stop()
+        }
     }
     private func armSilence(seconds: Double, token: UUID) {
         silence?.cancel()
@@ -77,10 +82,9 @@ import Observation
         engine?.stop(); engine?.inputNode.removeTap(onBus: 0); engine = nil
         request?.endAudio(); request = nil; recognition?.cancel(); recognition = nil
         isRecording = false; isPreparing = false
-        Task.detached(priority: .userInitiated) {
-            let session = AVAudioSession.sharedInstance()
-            try? session.setActive(false, options: .notifyOthersOnDeactivation)
-            try? session.setCategory(.ambient)
+        if ownsAudioSession {
+            ownsAudioSession = false
+            AudioSessionCoordinator.shared.finishRecording()
         }
     }
 }

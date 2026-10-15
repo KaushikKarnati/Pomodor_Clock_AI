@@ -160,6 +160,39 @@ final class FocusTalkUITests: XCTestCase {
         app.activate()
     }
 
+    @MainActor func testSpokenReplyPreferenceSurvivesRelaunch() {
+        let app = app()
+        app.buttons["Session and settings"].tap()
+        let voice = app.switches["Read replies aloud"]
+        XCTAssertTrue(voice.waitForExistence(timeout: 5))
+        XCTAssertEqual(voice.value as? String, "1")
+        voice.tap()
+        XCTAssertEqual(voice.value as? String, "0")
+        app.buttons["Close settings"].tap()
+        XCTAssertTrue(app.buttons["Talk"].waitForExistence(timeout: 5))
+        app.terminate()
+        app.launchArguments = ["--ui-testing"]
+        app.launch()
+        app.buttons["Session and settings"].tap()
+        XCTAssertTrue(voice.waitForExistence(timeout: 5))
+        XCTAssertEqual(voice.value as? String, "0")
+    }
+
+    @MainActor func testTypedStartAcceptsExistingProposal() {
+        let app = app()
+        app.buttons["Play an example"].tap()
+        XCTAssertTrue(app.buttons["Start session"].waitForExistence(timeout: 5))
+        app.buttons["Session and settings"].tap()
+        app.buttons["Type instead"].tap()
+        let input = app.textFields["Tasks and time available"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.tap()
+        input.typeText("start\n")
+        allowNotifications()
+        XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Client deck"].exists)
+    }
+
     @MainActor func testLargeTextHome() {
         let app = XCUIApplication()
         app.terminate()

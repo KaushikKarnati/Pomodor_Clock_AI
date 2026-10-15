@@ -1,13 +1,15 @@
 import Foundation
+import UIKit
 import UserNotifications
 @preconcurrency import ActivityKit
 
 @MainActor protocol FocusPersisting {
     func load() throws -> SavedState
-    func save(_ state: SavedState) throws
+    func save(_ state: SavedState, completion: @escaping @MainActor @Sendable (Result<Void, Error>) -> Void)
 }
 @MainActor final class DiskStore: FocusPersisting {
     private let url: URL
+    private let writer: StateFileWriter
     init() {
         let directory = URL.applicationSupportDirectory.appendingPathComponent("FocusTalk", isDirectory: true)
         #if DEBUG
@@ -15,6 +17,7 @@ import UserNotifications
         #else
         url = directory.appendingPathComponent("sessions.json")
         #endif
+        writer = StateFileWriter(url: url)
     }
     func load() throws -> SavedState {
         #if DEBUG
@@ -32,22 +35,38 @@ import UserNotifications
         }
         return state
     }
-    func save(_ state: SavedState) throws {
-        let destination = self.url
-        Task.detached(priority: .utility) {
-            do {
-                let data = try JSONEncoder().encode(state)
-                try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try data.write(to: destination, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
-            } catch {
-                #if DEBUG
-                print("Failed to save state in background: \(error)")
-                #endif
+    func save(_ state: SavedState, completion: @escaping @MainActor @Sendable (Result<Void, Error>) -> Void) {
+        // Give already queued writes time to finish when the app backgrounds.
+        let lease = PersistenceLease()
+        writer.save(state) { result in
+            Task { @MainActor in
+                lease.end()
+                completion(result)
             }
         }
     }
 }
-@MainActor final class SessionServices: NSObject, UNUserNotificationCenterDelegate {
+
+@MainActor private final class PersistenceLease {
+    private var identifier: UIBackgroundTaskIdentifier = .invalid
+    init() {
+        identifier = UIApplication.shared.beginBackgroundTask(withName: "Save focus session") { [weak self] in
+            Task { @MainActor in self?.end() }
+        }
+    }
+    func end() {
+        guard identifier != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(identifier)
+        identifier = .invalid
+    }
+
+}
+@MainActor protocol SessionServing {
+    func requestNotifications() async -> Bool
+    func sync(session: FocusSession?, auto: Bool)
+}
+
+@MainActor final class SessionServices: NSObject, UNUserNotificationCenterDelegate, SessionServing {
     private var syncTask: Task<Void, Never>?
     override init() { super.init(); UNUserNotificationCenter.current().delegate = self }
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions { [] }

@@ -1,3 +1,5 @@
+> Current follow-up: see [RELIABILITY-2026-10-15.md](RELIABILITY-2026-10-15.md) for the reliability fixes, current verification, and performance limits. The older entries below are historical records, not evidence of current 120-FPS performance or currently exposed editing/history features.
+
 # FocusTalk validation — October 15, 2026
 
 ## Confirmed

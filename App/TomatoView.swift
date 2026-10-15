@@ -169,8 +169,14 @@ struct TomatoView: View {
         guard gap > 0.01 else { return }
         winding?.cancel()
         winding = nil
-        guard gap > 0.75, !reduceMotion, scenePhase == .active else {
+        guard !reduceMotion, scenePhase == .active else {
             displayed = target
+            return
+        }
+        if gap <= 0.75 {
+            withAnimation(.linear(duration: min(1, gap * 60))) {
+                displayed = target
+            }
             return
         }
         let from = displayed, destination = target
@@ -194,9 +200,14 @@ struct TomatoView: View {
 
 private struct DialMarkings: View, Animatable {
     var minutes: Double
-    var animatableData: Double {
+    nonisolated var animatableData: Double {
         get { minutes }
         set { minutes = newValue }
+    }
+
+    private static let angles = (0..<60).map { minute in
+        let angle = Double(minute) / 60 * .pi * 2
+        return (minute: minute, sine: sin(angle), cosine: cos(angle))
     }
 
     private static let cachedTexts: [Int: Text] = {
@@ -214,11 +225,13 @@ private struct DialMarkings: View, Animatable {
             let scale = size.width / 680
             context.scaleBy(x: scale, y: scale)
             let rho = minutes / 60 * .pi * 2
-            for minute in 0..<60 {
-                let angle = Double(minute) / 60 * .pi * 2 - rho
-                let cosine = cos(angle)
+            let sinRho = sin(rho), cosRho = cos(rho)
+            for angle in Self.angles {
+                let minute = angle.minute
+                let cosine = angle.cosine * cosRho + angle.sine * sinRho
                 guard cosine >= 0.06 else { continue }
-                let sine = sin(angle), major = minute % 5 == 0
+                let sine = angle.sine * cosRho - angle.cosine * sinRho
+                let major = minute % 5 == 0
                 let x = 341.5 + 282 * sine, y = 361.8 + 83.1 * cosine
                 let length: Double = major ? 19 : 13
                 let width = (major ? 5.2 : 3.6) * max(0.3, cosine)

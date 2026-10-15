@@ -10,10 +10,10 @@ Ram Karnati’s development team is configured for both targets. The app was ins
 
 ## Features
 
-- Native dial, task plan editor, timer, pause/extend/skip/end, local history and reuse.
+- Native dial, plan preview, timer, pause/extend/skip/end, and locally persisted session history. Manual multi-block editing and browsing/reusing history are not exposed in the current UI.
 - Apple on-device Speech recognition with editable text and manual fallback. Finishing speech automatically requests a plan. The home-screen mic opens a live glass transcription bubble; no voice sheet.
 - Foundation Models structured planning with availability handling, budget validation, cancellation, and automatic start after successful generation.
-- Original source-derived bell, alternating ticks, and ratchet. Separate tick and mechanical-haptics settings. Spoken output is removed.
+- Original source-derived bell, alternating ticks, ratchet, and mechanical haptics. Settings control ticking sound, spoken replies, and automatic progression; the spoken-reply preference survives relaunch.
 - Persisted timer deadlines, local notifications, and ActivityKit Lock Screen / Dynamic Island presentation.
 
 ## Tests
@@ -40,6 +40,14 @@ The current speech implementation uses Apple's `SFSpeechRecognizer` with `requir
 - AI and speech behavior, physical audio parity, and haptic feel need a supported physical iPhone. Simulator tests cannot establish those results.
 - If saved data is unreadable, the original file is preserved and writes are blocked for that launch; the app reports the issue rather than replacing the file.
 
-Saving or accepting a plan starts its timer immediately. Setting the tomato dial leaves it ready; tap Start to begin. New AI plans start automatically. Replacing an active session still requires inline confirmation. All editing, settings, history, and privacy content expand on the home screen.
+Accepting a plan or setting the tomato dial starts its timer immediately. New AI plans start automatically. Replacing an active session requires accepting the proposal through the existing controls or an explicit start command. Plan preview, settings, and typed input use the existing home-screen overlays. Errors appear through the existing caption/toast surfaces.
 
-The main dial and countdown show full remaining session time, including breaks. Break durations do not imply equal-sized work intervals. The red X beside the active timer opens an inline end-and-save confirmation.
+The main dial and countdown show the current block; automatic-progression Live Activities show the remaining session. Break durations do not imply equal-sized work intervals. End session uses the existing two-tap settings control. Timeline estimates follow remaining time; paused estimates assume resuming now, and completed rows retain the original schedule rather than claiming measured historical start times.
+
+## Reliability and rendering
+
+Session snapshots are encoded and atomically written on one FIFO background queue, with errors returned to the store and a bounded iOS background-task allowance for queued saves. A dial change validates its updated budget before committing it. No background execution is assumed for the timer.
+
+The foreground timer updates at displayed-second boundaries; it does not poll when idle, paused, or backgrounded. Small dial movements and the speech-silence indicator use native interpolation. Dial trigonometry is precomputed, and SwiftUI manages display cadence without a permanently running empty display-link callback. ProMotion eligibility remains enabled; this is not a measured or guaranteed 120-FPS claim.
+
+`swift test` covers timer/model invariants and ordered disk writes. The shared Xcode scheme also runs injected store tests and native UI tests, including spoken-preference relaunch and accepting an existing plan with a typed start command. Store tests isolate notifications, AI, audio, and persistence; they do not establish real-device AI, speech, or audio performance.
