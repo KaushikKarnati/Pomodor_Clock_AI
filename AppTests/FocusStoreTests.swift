@@ -152,7 +152,7 @@ import XCTest
 }
 @MainActor private final class SilentAudio: FocusAudioPlaying {
     func tick(odd: Bool, sound: Bool, haptics: Bool) {}
-    func ratchet(haptics: Bool) {}
+    func ratchet(notches: Int, haptics: Bool) {}
     func bell() {}
     func stop() {}
 }

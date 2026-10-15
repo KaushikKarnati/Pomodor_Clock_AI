@@ -267,8 +267,8 @@ struct HomeView: View {
                 onChange: { newMinutes in
                     store.setManualMinutes(newMinutes)
                 },
-                onRatchet: {
-                    store.audio.ratchet(haptics: store.settings.haptics)
+                onRatchet: { crossedNotches in
+                    store.audio.ratchet(notches: crossedNotches, haptics: store.settings.haptics)
                 }
             )
             .frame(width: tomatoSize, height: tomatoSize)

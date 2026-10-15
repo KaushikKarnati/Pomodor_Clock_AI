@@ -67,6 +67,41 @@ final class FocusCoreTests: XCTestCase {
         XCTAssertThrowsError(try FocusPlan(blocks: [.init(title: "One", minutes: Int.max), .init(title: "Two", minutes: Int.max)], budgetMinutes: 480).validated())
     }
 
+    func testSlowWindingKeepsSingleClicks() {
+        var scheduler = RatchetSchedule()
+        XCTAssertEqual(scheduler.clicks(crossedNotches: 1, at: 10), [10.003])
+        XCTAssertEqual(scheduler.clicks(crossedNotches: 1, at: 11), [11.003])
+    }
+
+    func testFastWindingProducesMultipleClicksWithoutLongTail() {
+        var scheduler = RatchetSchedule()
+        let clicks = scheduler.clicks(crossedNotches: 40, at: 10)
+        XCTAssertEqual(clicks.count, 6)
+        XCTAssertLessThanOrEqual(clicks.last! - 10, RatchetSchedule.maximumLead + 0.000001)
+        for pair in zip(clicks, clicks.dropFirst()) {
+            XCTAssertEqual(pair.1 - pair.0, RatchetSchedule.spacing, accuracy: 0.000001)
+        }
+    }
+
+    func testRapidRepeatedWindingDoesNotBuildAudioBacklog() {
+        var scheduler = RatchetSchedule()
+        var allClicks: [Double] = []
+        for frame in 0..<120 {
+            let now = 10 + Double(frame) / 120
+            let clicks = scheduler.clicks(crossedNotches: 5, at: now)
+            XCTAssertTrue(clicks.allSatisfy { $0 <= now + RatchetSchedule.maximumLead + 0.000001 })
+            allClicks.append(contentsOf: clicks)
+        }
+        XCTAssertGreaterThan(allClicks.count, 100)
+        XCTAssertLessThan(allClicks.count, 140)
+        for pair in zip(allClicks, allClicks.dropFirst()) {
+            XCTAssertGreaterThanOrEqual(pair.1 - pair.0, RatchetSchedule.spacing - 0.000001)
+        }
+        scheduler.reset()
+        XCTAssertEqual(scheduler.clicks(crossedNotches: 1, at: 11), [11.003])
+        XCTAssertTrue(scheduler.clicks(crossedNotches: 0, at: 11).isEmpty)
+    }
+
     let now = Date(timeIntervalSince1970: 1000)
     func plan() -> FocusPlan { FocusPlan(blocks: [.init(title: "Write", minutes: 2), .init(title: "Rest", minutes: 1, isBreak: true), .init(title: "Review", minutes: 2)], budgetMinutes: 5) }
     func testRelaunchAdvancesAcrossMultipleDeadlinesExactlyOnce() throws {

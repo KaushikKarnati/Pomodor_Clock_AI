@@ -171,3 +171,26 @@ struct SavedState: Codable, Sendable {
     var history: [FocusSession] = []
     var settings = FocusSettings()
 }
+
+/// Bounds rapid winding feedback to a short audible burst, never a long backlog.
+/// Times use the audio device's monotonic clock, not wall time.
+struct RatchetSchedule {
+    static let spacing = 0.008
+    static let maximumLead = 0.043
+    private var nextTime: TimeInterval = 0
+
+    mutating func clicks(crossedNotches: Int, at now: TimeInterval) -> [TimeInterval] {
+        guard crossedNotches > 0 else { return [] }
+        var times: [TimeInterval] = []
+        var time = max(now + 0.003, nextTime)
+        for _ in 0..<min(crossedNotches, 6) {
+            guard time <= now + Self.maximumLead + 0.000001 else { break }
+            times.append(time)
+            time += Self.spacing
+        }
+        if !times.isEmpty { nextTime = time }
+        return times
+    }
+
+    mutating func reset() { nextTime = 0 }
+}
