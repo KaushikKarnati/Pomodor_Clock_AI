@@ -26,7 +26,6 @@ struct TimerObjectView: View {
     @State private var displayed = 0.0
     @State private var target = 0.0
     @State private var winding: Task<Void, Never>?
-    @State private var floatY: CGFloat = -3.5
     @State private var rattleOffset: CGFloat = 0
 
     private var info: TimerObjectInfo { TimerObjectInfo.info(object) }
@@ -84,10 +83,15 @@ struct TimerObjectView: View {
                 }
                 .animation(reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.86), value: object)
                 .frame(width: side * 0.86, height: side * 0.86)
-                .offset(y: (reduceMotion || dragStart != nil) ? 0 : floatY)
+                // Idle float. A phase animator restarts each cycle; a repeatForever animation was
+                // replaced (and stopped for good) by the drag spring on the first twist.
+                .phaseAnimator([false, true]) { view, up in
+                    view.offset(y: (reduceMotion || dragStart != nil) ? 0 : (up ? 3.5 : -3.5))
+                } animation: { _ in .easeInOut(duration: 3) }
                 .rotationEffect(.degrees(rattleOffset))
                 .scaleEffect(dragStart != nil && !reduceMotion ? 1.015 : (isListening && !reduceMotion ? 1.03 : 1.0))
                 .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.82), value: dragStart != nil)
+                .animation(reduceMotion ? nil : .spring(response: 0.45, dampingFraction: 0.8), value: isListening)
             }
             .frame(width: side, height: side)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -141,11 +145,6 @@ struct TimerObjectView: View {
             .onAppear {
                 displayed = minutes
                 target = minutes
-                if !reduceMotion {
-                    withAnimation(.easeInOut(duration: 3.0).repeatForever(autoreverses: true)) {
-                        floatY = 3.5
-                    }
-                }
             }
             .onChange(of: minutes) { _, newValue in
                 wind(to: newValue)
@@ -156,12 +155,18 @@ struct TimerObjectView: View {
                 }
             }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .background {
-                    winding?.cancel()
-                    winding = nil
+                // A touch the system cancels (alert, incoming call) never reaches onEnded.
+                if phase != .active, dragStart != nil || dragValue != nil {
                     dragStart = nil
                     dragValue = nil
                     lastNotch = nil
+                    dragBlockID = nil
+                    displayed = minutes
+                    target = minutes
+                }
+                if phase == .background {
+                    winding?.cancel()
+                    winding = nil
                     displayed = minutes
                 }
             }
@@ -217,16 +222,36 @@ struct TimerObjectView: View {
         withAnimation(.timingCurve(0.16, 1, 0.3, 1, duration: duration)) {
             displayed = destination
         }
+        let crossings = Self.windClickTimes(from: from, to: destination, duration: duration)
         winding = Task { @MainActor in
-            let steps = max(1, Int(gap))
-            for step in 1...steps {
-                try? await Task.sleep(for: .seconds(duration / Double(steps)))
+            var elapsed = 0.0
+            for time in crossings {
+                try? await Task.sleep(for: .seconds(max(0, time - elapsed)))
+                elapsed = time
                 guard !Task.isCancelled else { return }
-                if Int(from + (destination - from) * Double(step) / Double(steps)) != Int(from) {
-                    onRatchet(1)
-                }
+                onRatchet(1)
             }
             winding = nil
+        }
+    }
+
+    /// When the eased wind crosses each whole minute. The curve (0.16, 1, 0.3, 1) has y(s) = 1 - (1 - s)^3,
+    /// so the parameter for progress p is s = 1 - (1 - p)^(1/3); x(s) gives the time fraction.
+    static func windClickTimes(from: Double, to destination: Double, duration: Double) -> [Double] {
+        guard abs(destination - from) > 0.001 else { return [] }
+        let minutes: [Int]
+        if destination > from {
+            let first = Int(from.rounded(.down)) + 1, last = Int(destination.rounded(.down))
+            minutes = first <= last ? Array(first...last) : []
+        } else {
+            let first = Int(from.rounded(.up)) - 1, last = Int(destination.rounded(.up))
+            minutes = first >= last ? Array(stride(from: first, through: last, by: -1)) : []
+        }
+        return minutes.map { minute in
+            let p = min(1, max(0, (Double(minute) - from) / (destination - from)))
+            let s = 1 - pow(1 - p, 1.0 / 3)
+            let x = 3 * (1 - s) * (1 - s) * s * 0.16 + 3 * (1 - s) * s * s * 0.3 + s * s * s
+            return x * duration
         }
     }
 }

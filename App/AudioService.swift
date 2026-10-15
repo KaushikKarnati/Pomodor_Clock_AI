@@ -55,8 +55,9 @@ extension FocusAudioPlaying {
         AudioSessionCoordinator.shared.prepareAmbient()
     }
 
-    private func play(_ name: String, repeats: Int = 1, rate: Float = 1) {
-        guard !interrupted, UIApplication.shared.applicationState == .active else { return }
+    private func play(_ name: String, repeats: Int = 1, rate: Float = 1, allowInactive: Bool = false) {
+        let state = UIApplication.shared.applicationState
+        guard !interrupted, state == .active || (allowInactive && state == .inactive) else { return }
         let sounds = self.sounds
         AudioSessionCoordinator.shared.perform { sounds.play(name, repeats: repeats, rate: rate) }
     }
@@ -82,7 +83,8 @@ extension FocusAudioPlaying {
         }
     }
 
-    func bell() { play("bell") }
+    /// A block end must be heard even with Control Center or a banner over the app.
+    func bell() { play("bell", allowInactive: true) }
 
     func stop() {
         ratchetCadence = RatchetCadence()

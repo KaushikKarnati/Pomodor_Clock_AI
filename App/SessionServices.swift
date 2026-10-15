@@ -28,13 +28,17 @@ import UserNotifications
         guard state.version == 1 else { throw PlanError.invalid("This saved file uses a newer version of FocusTalk.") }
         if var session = state.session {
             session.plan = session.plan.repairingBudget()
+            // If the device clock moved back, a running deadline can sit further away than the time
+            // left; clamp it rather than treating the file as unreadable.
+            if session.status == .running, let deadline = session.deadline, deadline.timeIntervalSinceNow > session.remaining {
+                session.deadline = .now.addingTimeInterval(session.remaining)
+            }
             state.session = session
             _ = try session.plan.validated()
             // Blocks are at most 120 minutes; larger values can only come from a damaged file and
             // would trap when converted to whole seconds for display.
             guard session.index >= 0, session.index <= session.plan.blocks.count,
                   session.remaining.isFinite, session.remaining >= 0, session.remaining <= 120 * 60,
-                  session.deadline.map({ $0.timeIntervalSinceNow <= 120 * 60 + 60 }) ?? true,
                   (session.status != .running || session.deadline != nil),
                   (!session.isActive || session.index < session.plan.blocks.count) else { throw PlanError.invalid("The saved timer could not be read safely.") }
         }
@@ -81,11 +85,11 @@ extension SessionServing {
     private var alarmFile = "bell"
     private var objectMini = "mini-tomato"
     override init() { super.init(); UNUserNotificationCenter.current().delegate = self }
-    /// While active the app rings its own bell. When it is merely inactive (Control Center, a call banner,
-    /// a permission alert) the in-app bell can't play, so let the notification sound and show instead.
+    /// The app rings its own bell while in the foreground, including when merely inactive (Control Center,
+    /// a call banner). When inactive, also show the banner in case the in-app tick raced the trigger.
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         await MainActor.run { () -> UNNotificationPresentationOptions in
-            UIApplication.shared.applicationState == .active ? [] : [.banner, .list, .sound]
+            UIApplication.shared.applicationState == .active ? [] : [.banner, .list]
         }
     }
     func requestNotifications() async -> Bool {

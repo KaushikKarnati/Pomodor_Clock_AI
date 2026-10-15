@@ -78,13 +78,13 @@ import XCTest
         defer { store.setForeground(false) }
         var last = store.now
         var changes = 0
-        let end = Date.now.addingTimeInterval(2.4)
+        let end = Date.now.addingTimeInterval(3.4)
         while Date.now < end {
             try await Task.sleep(for: .milliseconds(20))
             if store.now != last { changes += 1; last = store.now }
         }
-        XCTAssertGreaterThanOrEqual(changes, 2)
-        XCTAssertLessThanOrEqual(changes, 3)
+        XCTAssertGreaterThanOrEqual(changes, 2) // 1 Hz ticks with up to ~1.4 s of slack
+        XCTAssertLessThanOrEqual(changes, 4)    // 5 Hz would be ~17
     }
 
     func testAIStartsNewPlanButRequiresAcceptanceForReplacement() async {
@@ -167,10 +167,11 @@ import XCTest
         let store = makeStore()
         store.setManualMinutes(60)
         for _ in 0..<13 { store.extend() }  // 60 → 120 minutes, then one rejected
-        XCTAssertEqual(store.notice, "This block or session has reached its time limit.")
-        store.notice = nil
+        XCTAssertEqual(store.reply, "This block or session has reached its time limit.")
+        store.reply = ""
         store.extend()
-        XCTAssertEqual(store.notice, "This block or session has reached its time limit.")
+        XCTAssertEqual(store.reply, "This block or session has reached its time limit.")
+        XCTAssertEqual(store.toastMessage, "This block or session has reached its time limit.")
         store.setForeground(false)
     }
 }

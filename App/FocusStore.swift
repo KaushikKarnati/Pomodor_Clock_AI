@@ -260,7 +260,7 @@ import AVFoundation
         busy = true
         reply = ""
         said = words
-        error = nil
+        if !persistenceBlocked { error = nil } // keep "nothing is being saved" visible
 
         // Preserve the proposal until acceptance commands have been handled.
         if let cmd = matchQuickCommand(words) {
@@ -378,7 +378,7 @@ import AVFoundation
     /// Returns whether the change was accepted, so the dial can wind back when it was not.
     @discardableResult func setManualMinutes(_ minutes: Int, expectedBlock: UUID? = nil) -> Bool {
         tick()
-        if let expectedBlock, session?.isActive == true, session?.current?.id != expectedBlock {
+        if let expectedBlock, session?.current?.id != expectedBlock {
             return false
         }
         if minutes == 0 {
@@ -443,9 +443,10 @@ import AVFoundation
         let before = saved.session
         saved.session?.extend(at: .now)
         guard saved.session != before else {
-            // Reset first so a repeated tap still shows the message (HomeView reacts to changes).
-            notice = nil
-            notice = "This block or session has reached its time limit."
+            // Shown directly: setting `notice` to the same text again would not re-trigger HomeView.
+            let message = "This block or session has reached its time limit."
+            reply = message
+            toast(message)
             return
         }
         toast("Added 5 minutes")

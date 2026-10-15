@@ -14,7 +14,8 @@ SRC = pathlib.Path(__file__).resolve().parent / "wav"
 OUT = ROOT / "Resources" / "Sounds"
 RATE = 48000
 
-# id: (prototype, trim seconds) — winding clicks must stay short so fast dial turns stay crisp.
+# id: (prototype, trim seconds) — winding clicks must stay short so fast dial turns stay crisp;
+# every winding sound is also cut at its -40 dB tail (trim_tail).
 WIND = {"felt": ("library_ratchet", None), "wooden": ("wood_ratchet", None), "chrome": ("egg_wind", None),
         "sand": ("hourglass_pour", 0.06), "mainspring": ("twinbell_wind", None), "brass": ("brass_ratchet", 0.06),
         "deep": ("deep_ratchet", None)}
@@ -48,6 +49,16 @@ def trim(x, seconds, fade=0.012):
     y[-f:] *= 0.5 + 0.5 * np.cos(np.linspace(0, math.pi, f))
     return y
 
+def trim_tail(x, floor_db=-40.0, fade=0.003):
+    """Cut the silent tail: AudioService skips a winding click while the previous one is still
+    "playing", so a long inaudible tail would swallow the next notch."""
+    peak = float(np.max(np.abs(x)))
+    above = np.nonzero(np.abs(x) >= peak * 10 ** (floor_db / 20))[0]
+    end = min(len(x), int(above[-1]) + 1 + int(fade * RATE))
+    y = x[:end].copy(); f = int(fade * RATE)
+    y[-f:] *= np.linspace(1, 0, f)
+    return y
+
 def lowpass(x, f, q=0.707):
     w = 2 * math.pi * f / RATE; al = math.sin(w) / (2 * q); c = math.cos(w); a0 = 1 + al
     b0, b1, b2 = (1 - c) / 2 / a0, (1 - c) / a0, (1 - c) / 2 / a0; a1, a2 = -2 * c / a0, (1 - al) / a0
@@ -62,7 +73,7 @@ def rms(x): return float(np.sqrt(np.mean(x ** 2)))
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     for key, (src, seconds) in WIND.items():
-        write(f"wind-{key}", trim(read(src), seconds, fade=0.008))
+        write(f"wind-{key}", trim_tail(trim(read(src), seconds, fade=0.008)))
     for key, (odd, even, cutoff) in TICK.items():
         for side, src in (("odd", odd), ("even", even)):
             x = read(src)

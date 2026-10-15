@@ -131,6 +131,7 @@ struct HomeView: View {
                 }
             }
         }
+        .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85), value: store.toastMessage)
         .preferredColorScheme(.dark)
         .onAppear {
             speech.onFinished = { text in
@@ -272,11 +273,11 @@ struct HomeView: View {
                 // The dial spans 60 minutes; a longer remaining block can't be shown, so dragging it
                 // would silently cut time. Use skip/end or the plan for those blocks.
                 canAdjust: !isListening && !store.busy && phase != .proposal && store.currentBlockMinutes <= 60.01,
-                blockID: store.session?.isActive == true ? store.session?.current?.id : nil,
                 isBreak: isBreakBlock,
                 isListening: isListening,
                 isRattling: store.isRattling,
                 isRunning: store.session?.status == .running,
+                blockID: store.session?.isActive == true ? store.session?.current?.id : nil,
                 onChange: { newMinutes, block in
                     store.setManualMinutes(newMinutes, expectedBlock: block)
                 },
@@ -632,6 +633,7 @@ struct HomeView: View {
                             .opacity(callingPulse ? 0 : 0.75)
                             .animation(reduceMotion ? nil : .easeInOut(duration: 1.6).repeatForever(autoreverses: false), value: callingPulse)
                             .onAppear { callingPulse = true }
+                            .onDisappear { callingPulse = false }
                     }
 
                     Image(systemName: playIconName)
@@ -753,7 +755,7 @@ struct HomeView: View {
                         if phase == .proposal {
                             Button {
                                 if let p = store.proposal {
-                                    showPlanSheet = false
+                                    withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { showPlanSheet = false }
                                     store.apply(p, startImmediately: true)
                                 }
                             } label: {
@@ -775,7 +777,7 @@ struct HomeView: View {
                                 .foregroundStyle(Color.white.opacity(0.70))
 
                             Button {
-                                showPlanSheet = false
+                                withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { showPlanSheet = false }
                                 store.runDemo()
                             } label: {
                                 Text("Play the example")
@@ -1016,7 +1018,7 @@ struct HomeView: View {
 
                         tileButton(icon: "arrow.clockwise", title: "Start over", disabled: phase == .idle) {
                             store.startOver()
-                            showMoreSheet = false
+                            withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { showMoreSheet = false }
                         }
                     }
 
@@ -1050,7 +1052,7 @@ struct HomeView: View {
 
                         HStack(spacing: 12) {
                             Button("Type instead") {
-                                showMoreSheet = false
+                                withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { showMoreSheet = false }
                                 showTypedInput = true
                                 wordsFocused = true
                             }
@@ -1061,7 +1063,7 @@ struct HomeView: View {
 
                             if phase == .idle {
                                 Button("Play the example") {
-                                    showMoreSheet = false
+                                    withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { showMoreSheet = false }
                                     store.runDemo()
                                 }
                                 .font(.system(size: 14, weight: .semibold))
