@@ -29,3 +29,9 @@ Based on repository commit `89894c2`. Layout, colors, typography, artwork, contr
 - Simulator screenshots from the initial passing UI run were visually inspected for the home and running states. These are visual inspections, not pixel-diff or physical-device frame-time measurements.
 
 The store tests inject planning, persistence, audio, and notification services. Passing them does not prove real Apple Intelligence, microphone, Bluetooth, interruption, notification audibility, or Live Activity behavior on hardware. No device deployment, TestFlight upload, or App Store release was performed. Sustained FPS, energy, thermal behavior, and subjective smoothness still need physical-device Instruments and hands-on testing.
+
+## Audio activation follow-up
+
+The explicit session transitions now use iOS 27 asynchronous activate/deactivate APIs. iOS 26 retains synchronous APIs exclusively on the background audio worker, enforced by queue preconditions. The FIFO waits for asynchronous completions before starting later transitions. Player creation, preparation, playback, and stopping also run on that worker because player APIs can implicitly activate the audio session. Haptics stay on the main actor. No UI changes were made.
+
+Verification: 11 store/audio-queue tests and the existing session-flow UI test passed (12 targeted tests). Simulator and signed physical-device Release builds passed. Code signature verification passed; the updated app was installed and launched on Karnatty. A 15-second launch-console capture contained no instance of the reported warning and ended at its intentional timeout; this does not verify every audio or microphone interaction. Real microphone start/stop, speech playback, and interruption scenarios still require hands-on verification.

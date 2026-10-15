@@ -160,3 +160,67 @@ import XCTest
     func requestNotifications() async -> Bool { true }
     func sync(session: FocusSession?, auto: Bool) {}
 }
+
+final class AudioWorkQueueTests: XCTestCase {
+    func testAsyncCompletionKeepsLaterAudioOperationsOrderedAndOffMain() {
+        let queue = AudioWorkQueue()
+        let trace = AudioTrace()
+        let finished = expectation(description: "Ordered audio operations finish")
+        queue.enqueue { done in
+            XCTAssertFalse(Thread.isMainThread)
+            trace.append("activate")
+            DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
+                trace.append("activation completed")
+                done()
+            }
+        }
+        queue.enqueue { done in
+            XCTAssertFalse(Thread.isMainThread)
+            trace.append("prepare player")
+            done()
+        }
+        queue.enqueue { done in
+            XCTAssertFalse(Thread.isMainThread)
+            trace.append("play")
+            done()
+            finished.fulfill()
+        }
+        wait(for: [finished], timeout: 3)
+        XCTAssertEqual(trace.values, ["activate", "activation completed", "prepare player", "play"])
+    }
+
+    func testTeardownContinuationFinishesBeforeNewRecording() {
+        let queue = AudioWorkQueue()
+        let trace = AudioTrace()
+        let finished = expectation(description: "Teardown finishes before restart")
+        queue.enqueue { done in
+            DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
+                queue.continueOnWorker {
+                    XCTAssertFalse(Thread.isMainThread)
+                    trace.append("restore category")
+                    done()
+                }
+            }
+        }
+        queue.enqueue { done in
+            trace.append("new recording")
+            done()
+            finished.fulfill()
+        }
+        wait(for: [finished], timeout: 3)
+        XCTAssertEqual(trace.values, ["restore category", "new recording"])
+    }
+}
+
+private final class AudioTrace: @unchecked Sendable {
+    private let lock = NSLock()
+    private var entries: [String] = []
+    var values: [String] {
+        lock.lock(); defer { lock.unlock() }
+        return entries
+    }
+    func append(_ value: String) {
+        lock.lock(); defer { lock.unlock() }
+        entries.append(value)
+    }
+}
