@@ -123,6 +123,67 @@ import XCTest
         XCTAssertEqual(store.saved.history.first?.id, id)
         XCTAssertEqual(store.saved.history.first?.status, .ended)
     }
+
+    func testDialChangeStartedOnAnEarlierBlockIsNotAppliedToTheNextBlock() {
+        let store = makeStore()
+        store.runDemo()
+        store.propose(words: "start")
+        let first = store.session?.current?.id
+        store.skip()
+        let second = store.session?.current
+        XCTAssertNotEqual(second?.id, first)
+        XCTAssertFalse(store.setManualMinutes(10, expectedBlock: first))
+        XCTAssertEqual(store.session?.current?.minutes, second?.minutes)
+        XCTAssertTrue(store.setManualMinutes(10, expectedBlock: second?.id))
+        XCTAssertEqual(store.session!.secondsLeft(at: .now), 600, accuracy: 1)
+        store.setForeground(false)
+    }
+
+    func testRejectedDialChangeReportsFailure() {
+        let store = makeStore()
+        store.setManualMinutes(25)
+        XCTAssertFalse(store.setManualMinutes(121))
+        XCTAssertEqual(store.session!.secondsLeft(at: .now), 1500, accuracy: 1)
+        store.setForeground(false)
+    }
+
+    func testChoosingAnObjectPersistsItAndLoadsItsSounds() {
+        let disk = MemoryDisk()
+        let audio = RecordingAudio()
+        let store = FocusStore(disk: disk, planner: StubPlanner(), audio: audio, services: StubServices())
+        XCTAssertEqual(audio.selections.last?.alarm, "bell")
+        store.selectObject(.hourglass)
+        XCTAssertEqual(disk.state.settings.object, .hourglass)
+        XCTAssertEqual(audio.selections.last, SoundSelection(wind: "wind-sand", tickOdd: "tick-sand-odd", tickEven: "tick-sand-even", alarm: "alarm-glassChime"))
+        store.setSound("none", for: .tick)
+        XCTAssertNil(audio.selections.last?.tickOdd)
+        XCTAssertFalse(disk.state.settings.tick)
+        store.setSound("gong", for: .alarm)
+        XCTAssertEqual(audio.previews.last?.id, "gong")
+        XCTAssertEqual(audio.selections.last?.alarm, "alarm-gong")
+    }
+
+    func testRepeatedLimitMessageIsPublishedAgain() {
+        let store = makeStore()
+        store.setManualMinutes(60)
+        for _ in 0..<13 { store.extend() }  // 60 → 120 minutes, then one rejected
+        XCTAssertEqual(store.notice, "This block or session has reached its time limit.")
+        store.notice = nil
+        store.extend()
+        XCTAssertEqual(store.notice, "This block or session has reached its time limit.")
+        store.setForeground(false)
+    }
+}
+
+@MainActor private final class RecordingAudio: FocusAudioPlaying {
+    var selections: [SoundSelection] = []
+    var previews: [SoundOption] = []
+    func tick(odd: Bool, sound: Bool, haptics: Bool) {}
+    func ratchet(notches: Int, haptics: Bool) {}
+    func bell() {}
+    func stop() {}
+    func configure(_ selection: SoundSelection) { selections.append(selection) }
+    func preview(_ option: SoundOption) { previews.append(option) }
 }
 
 @MainActor private final class MemoryDisk: FocusPersisting {

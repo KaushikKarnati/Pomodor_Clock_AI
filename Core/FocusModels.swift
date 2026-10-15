@@ -45,6 +45,13 @@ struct FocusPlan: Codable, Equatable, Sendable {
         }
         return self
     }
+    /// Earlier builds could lengthen a block from the dial without raising the budget, which made
+    /// otherwise valid saved sessions fail validation and blocked every save. Accept those files.
+    func repairingBudget() -> Self {
+        var plan = self
+        if plan.totalMinutes > plan.budgetMinutes, plan.totalMinutes <= 480 { plan.budgetMinutes = plan.totalMinutes }
+        return plan
+    }
 }
 enum PlanError: LocalizedError { case invalid(String)
     var errorDescription: String? { if case .invalid(let text) = self { return text }; return nil }
@@ -144,9 +151,13 @@ struct FocusSettings: Codable, Equatable, Sendable {
     var tick = true
     var haptics = true
     var auto = true
+    var object: TimerObjectID = .tomato
+    var windSound = SoundCatalog.classic
+    var tickSound = SoundCatalog.classic
+    var alarmSound = SoundCatalog.classic
 
     enum CodingKeys: String, CodingKey {
-        case voice, tick, haptics, auto
+        case voice, tick, haptics, auto, object, windSound, tickSound, alarmSound
     }
 
     init(voice: Bool = true, tick: Bool = true, haptics: Bool = true, auto: Bool = true) {
@@ -162,8 +173,20 @@ struct FocusSettings: Codable, Equatable, Sendable {
         self.haptics = try container.decodeIfPresent(Bool.self, forKey: .haptics) ?? true
         self.auto = try container.decodeIfPresent(Bool.self, forKey: .auto) ?? true
         self.voice = try container.decodeIfPresent(Bool.self, forKey: .voice) ?? true
+        // Appearance keys are optional and lenient: an unknown value must never block loading
+        // (a load failure blocks all writes for that launch).
+        let objectName = (try? container.decodeIfPresent(String.self, forKey: .object)) ?? nil
+        self.object = objectName.flatMap(TimerObjectID.init(rawValue:)) ?? .tomato
+        self.windSound = Self.known((try? container.decodeIfPresent(String.self, forKey: .windSound)) ?? nil, for: .wind)
+        self.tickSound = Self.known((try? container.decodeIfPresent(String.self, forKey: .tickSound)) ?? nil, for: .tick)
+        self.alarmSound = Self.known((try? container.decodeIfPresent(String.self, forKey: .alarmSound)) ?? nil, for: .alarm)
+        if tickSound == SoundCatalog.none { tick = false; tickSound = SoundCatalog.classic }
     }
 
+    private static func known(_ id: String?, for role: SoundRole) -> String {
+        guard let id, SoundCatalog.isKnown(id, for: role) else { return SoundCatalog.classic }
+        return id
+    }
 }
 struct SavedState: Codable, Sendable {
     var version = 1

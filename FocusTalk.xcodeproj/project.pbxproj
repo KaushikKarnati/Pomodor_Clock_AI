@@ -27,6 +27,37 @@ AB0000000000000000000008 = {isa = XCBuildConfiguration; buildSettings = {
 
 
 /* Begin PBXBuildFile section */
+		D93480F320AC9F9EFE60146B /* Core/TimerTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = BED0123D05BC03D6E98F7B28 /* Core/TimerTheme.swift */; };
+		C4553ACB5B2960069C030490 /* Resources/Sounds/alarm-bowl.wav in Resources */ = {isa = PBXBuildFile; fileRef = CC34AEF47D8BF323BA97EC15 /* Resources/Sounds/alarm-bowl.wav */; };
+		BDDED44E534952D13E508AEF /* Resources/Sounds/alarm-eggBell.wav in Resources */ = {isa = PBXBuildFile; fileRef = E88DEEB277C19BECE0FF062B /* Resources/Sounds/alarm-eggBell.wav */; };
+		229B0F7184D3CBB688E0116C /* Resources/Sounds/alarm-glassChime.wav in Resources */ = {isa = PBXBuildFile; fileRef = 3F49B99D35B322FB3EAEBE39 /* Resources/Sounds/alarm-glassChime.wav */; };
+		0FDAED929F2E08037D8A28F2 /* Resources/Sounds/alarm-gong.wav in Resources */ = {isa = PBXBuildFile; fileRef = B38E3C488BC7B9F6CE73026E /* Resources/Sounds/alarm-gong.wav */; };
+		AC67E0AB166C684E07196250 /* Resources/Sounds/alarm-handbell.wav in Resources */ = {isa = PBXBuildFile; fileRef = A2CDBAE2720D1F1774F6CD1E /* Resources/Sounds/alarm-handbell.wav */; };
+		555E40759E332A14E8DE5533 /* Resources/Sounds/alarm-marimba.wav in Resources */ = {isa = PBXBuildFile; fileRef = 222193E430AA4E3F0CC8FB0E /* Resources/Sounds/alarm-marimba.wav */; };
+		F764CCAD4B35282ED12BF04D /* Resources/Sounds/alarm-templeBlocks.wav in Resources */ = {isa = PBXBuildFile; fileRef = 4C3513EA6ED7B5D24DF06D1F /* Resources/Sounds/alarm-templeBlocks.wav */; };
+		0BEA130EFE8C51F36E6C9A0E /* Resources/Sounds/alarm-twinBells.wav in Resources */ = {isa = PBXBuildFile; fileRef = 9DC4CE558A9D4D034EA82273 /* Resources/Sounds/alarm-twinBells.wav */; };
+		9CDB9F5404976BE52E4C0980 /* Resources/Sounds/tick-brass-even.wav in Resources */ = {isa = PBXBuildFile; fileRef = 4BBF9E668AC40851B6C05A49 /* Resources/Sounds/tick-brass-even.wav */; };
+		1787903FC364D85FFCD181A7 /* Resources/Sounds/tick-brass-odd.wav in Resources */ = {isa = PBXBuildFile; fileRef = 5F7A8C1FE9CD379348C2FC1F /* Resources/Sounds/tick-brass-odd.wav */; };
+		4022F35423DFFE010D676F5B /* Resources/Sounds/tick-chrome-even.wav in Resources */ = {isa = PBXBuildFile; fileRef = 4EC8A4E0DD27040A6EC749FB /* Resources/Sounds/tick-chrome-even.wav */; };
+		60BB880D52C474589775196C /* Resources/Sounds/tick-chrome-odd.wav in Resources */ = {isa = PBXBuildFile; fileRef = 03A92AD6EB9A7CE3DC44F88F /* Resources/Sounds/tick-chrome-odd.wav */; };
+		637E2E239B8E1297CFA35AD5 /* Resources/Sounds/tick-felt-even.wav in Resources */ = {isa = PBXBuildFile; fileRef = 12F7B6AA78E4E6A719201EC6 /* Resources/Sounds/tick-felt-even.wav */; };
+		AD86FADFD5F4245D8C8256E1 /* Resources/Sounds/tick-felt-odd.wav in Resources */ = {isa = PBXBuildFile; fileRef = 66BF4C35E056CFFE278E3942 /* Resources/Sounds/tick-felt-odd.wav */; };
+		5A24EC78B89A6911CFDEC6CE /* Resources/Sounds/tick-grandfather-even.wav in Resources */ = {isa = PBXBuildFile; fileRef = 056CB8BE91FD58E5CD79403A /* Resources/Sounds/tick-grandfather-even.wav */; };
+		7A8C0CE67E377B36E73DB00F /* Resources/Sounds/tick-grandfather-odd.wav in Resources */ = {isa = PBXBuildFile; fileRef = 4D6A3CE353CE056E0AE7BEBC /* Resources/Sounds/tick-grandfather-odd.wav */; };
+		6D239074D489DDF4EAC7E411 /* Resources/Sounds/tick-sand-even.wav in Resources */ = {isa = PBXBuildFile; fileRef = 291FFB7A4A3431F2B8EF19BB /* Resources/Sounds/tick-sand-even.wav */; };
+		07E221020926F7C9B90249CD /* Resources/Sounds/tick-sand-odd.wav in Resources */ = {isa = PBXBuildFile; fileRef = 75216602FD0DC4EF1ED664BB /* Resources/Sounds/tick-sand-odd.wav */; };
+		8D798CE5687777A09780A7C8 /* Resources/Sounds/tick-twinBell-even.wav in Resources */ = {isa = PBXBuildFile; fileRef = 92D135C4EB9E35E649F0A1DD /* Resources/Sounds/tick-twinBell-even.wav */; };
+		4C8958AB2997963C246E8E9F /* Resources/Sounds/tick-twinBell-odd.wav in Resources */ = {isa = PBXBuildFile; fileRef = 07C21C0C6EC5A3D684C32D29 /* Resources/Sounds/tick-twinBell-odd.wav */; };
+		0A46152C25FD67ADFD71639B /* Resources/Sounds/tick-woodblock-even.wav in Resources */ = {isa = PBXBuildFile; fileRef = 5E4FE58E33A06C6F7F0DD809 /* Resources/Sounds/tick-woodblock-even.wav */; };
+		E5C384CFA9788CEF4206C08E /* Resources/Sounds/tick-woodblock-odd.wav in Resources */ = {isa = PBXBuildFile; fileRef = 41F4A344073B029FCF09815D /* Resources/Sounds/tick-woodblock-odd.wav */; };
+		5CF1ACF9F9552E5FC372FA27 /* Resources/Sounds/wind-brass.wav in Resources */ = {isa = PBXBuildFile; fileRef = A640354C3BDE91745B9C472B /* Resources/Sounds/wind-brass.wav */; };
+		A0457F3163BA6B47817254B2 /* Resources/Sounds/wind-chrome.wav in Resources */ = {isa = PBXBuildFile; fileRef = EB91CAA6619673E4942F160C /* Resources/Sounds/wind-chrome.wav */; };
+		34C4F2D2B2A0CA6489230FA0 /* Resources/Sounds/wind-deep.wav in Resources */ = {isa = PBXBuildFile; fileRef = 8D7E47B1309CFD34497926BC /* Resources/Sounds/wind-deep.wav */; };
+		83BAD86BD7354A9F02563416 /* Resources/Sounds/wind-felt.wav in Resources */ = {isa = PBXBuildFile; fileRef = AACCDE965C8380554F5208E7 /* Resources/Sounds/wind-felt.wav */; };
+		94EBD5FDCB68BCE758E8CA4A /* Resources/Sounds/wind-mainspring.wav in Resources */ = {isa = PBXBuildFile; fileRef = 98232DCE2A188353F750AC85 /* Resources/Sounds/wind-mainspring.wav */; };
+		F9D8806A6D58AADF21DD533A /* Resources/Sounds/wind-sand.wav in Resources */ = {isa = PBXBuildFile; fileRef = 5D18DF160A0AAC9B41A5B3BB /* Resources/Sounds/wind-sand.wav */; };
+		AF83E4B7F3A8A0612B90098A /* Resources/Sounds/wind-wooden.wav in Resources */ = {isa = PBXBuildFile; fileRef = 491CFFBAD7AB83053B40BB10 /* Resources/Sounds/wind-wooden.wav */; };
+		27E40CA80034E5AAA9631E11 /* Widget/Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 18297A60B9E3FA7FC1BD99F1 /* Widget/Assets.xcassets */; };
 		AA0000000000000000000001 = {isa = PBXBuildFile; fileRef = AA0000000000000000000002; };
 		0CE91FB4D3CCFB454A4F1BE1 /* Core/FocusModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 543559CAAFABCB8D87944E91 /* Core/FocusModels.swift */; };
 		12777128847F5891217CCD06 /* Resources/ratchet.wav in Resources */ = {isa = PBXBuildFile; fileRef = 0EFFF04E650B803863A6F50D /* Resources/ratchet.wav */; };
@@ -83,6 +114,37 @@ AB0000000000000000000008 = {isa = XCBuildConfiguration; buildSettings = {
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		BED0123D05BC03D6E98F7B28 /* Core/TimerTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/TimerTheme.swift; sourceTree = "<group>"; };
+		CC34AEF47D8BF323BA97EC15 /* Resources/Sounds/alarm-bowl.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/alarm-bowl.wav; sourceTree = "<group>"; };
+		E88DEEB277C19BECE0FF062B /* Resources/Sounds/alarm-eggBell.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/alarm-eggBell.wav; sourceTree = "<group>"; };
+		3F49B99D35B322FB3EAEBE39 /* Resources/Sounds/alarm-glassChime.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/alarm-glassChime.wav; sourceTree = "<group>"; };
+		B38E3C488BC7B9F6CE73026E /* Resources/Sounds/alarm-gong.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/alarm-gong.wav; sourceTree = "<group>"; };
+		A2CDBAE2720D1F1774F6CD1E /* Resources/Sounds/alarm-handbell.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/alarm-handbell.wav; sourceTree = "<group>"; };
+		222193E430AA4E3F0CC8FB0E /* Resources/Sounds/alarm-marimba.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/alarm-marimba.wav; sourceTree = "<group>"; };
+		4C3513EA6ED7B5D24DF06D1F /* Resources/Sounds/alarm-templeBlocks.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/alarm-templeBlocks.wav; sourceTree = "<group>"; };
+		9DC4CE558A9D4D034EA82273 /* Resources/Sounds/alarm-twinBells.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/alarm-twinBells.wav; sourceTree = "<group>"; };
+		4BBF9E668AC40851B6C05A49 /* Resources/Sounds/tick-brass-even.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/tick-brass-even.wav; sourceTree = "<group>"; };
+		5F7A8C1FE9CD379348C2FC1F /* Resources/Sounds/tick-brass-odd.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/tick-brass-odd.wav; sourceTree = "<group>"; };
+		4EC8A4E0DD27040A6EC749FB /* Resources/Sounds/tick-chrome-even.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/tick-chrome-even.wav; sourceTree = "<group>"; };
+		03A92AD6EB9A7CE3DC44F88F /* Resources/Sounds/tick-chrome-odd.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/tick-chrome-odd.wav; sourceTree = "<group>"; };
+		12F7B6AA78E4E6A719201EC6 /* Resources/Sounds/tick-felt-even.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/tick-felt-even.wav; sourceTree = "<group>"; };
+		66BF4C35E056CFFE278E3942 /* Resources/Sounds/tick-felt-odd.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/tick-felt-odd.wav; sourceTree = "<group>"; };
+		056CB8BE91FD58E5CD79403A /* Resources/Sounds/tick-grandfather-even.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/tick-grandfather-even.wav; sourceTree = "<group>"; };
+		4D6A3CE353CE056E0AE7BEBC /* Resources/Sounds/tick-grandfather-odd.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/tick-grandfather-odd.wav; sourceTree = "<group>"; };
+		291FFB7A4A3431F2B8EF19BB /* Resources/Sounds/tick-sand-even.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/tick-sand-even.wav; sourceTree = "<group>"; };
+		75216602FD0DC4EF1ED664BB /* Resources/Sounds/tick-sand-odd.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/tick-sand-odd.wav; sourceTree = "<group>"; };
+		92D135C4EB9E35E649F0A1DD /* Resources/Sounds/tick-twinBell-even.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/tick-twinBell-even.wav; sourceTree = "<group>"; };
+		07C21C0C6EC5A3D684C32D29 /* Resources/Sounds/tick-twinBell-odd.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/tick-twinBell-odd.wav; sourceTree = "<group>"; };
+		5E4FE58E33A06C6F7F0DD809 /* Resources/Sounds/tick-woodblock-even.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/tick-woodblock-even.wav; sourceTree = "<group>"; };
+		41F4A344073B029FCF09815D /* Resources/Sounds/tick-woodblock-odd.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/tick-woodblock-odd.wav; sourceTree = "<group>"; };
+		A640354C3BDE91745B9C472B /* Resources/Sounds/wind-brass.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/wind-brass.wav; sourceTree = "<group>"; };
+		EB91CAA6619673E4942F160C /* Resources/Sounds/wind-chrome.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/wind-chrome.wav; sourceTree = "<group>"; };
+		8D7E47B1309CFD34497926BC /* Resources/Sounds/wind-deep.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/wind-deep.wav; sourceTree = "<group>"; };
+		AACCDE965C8380554F5208E7 /* Resources/Sounds/wind-felt.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/wind-felt.wav; sourceTree = "<group>"; };
+		98232DCE2A188353F750AC85 /* Resources/Sounds/wind-mainspring.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/wind-mainspring.wav; sourceTree = "<group>"; };
+		5D18DF160A0AAC9B41A5B3BB /* Resources/Sounds/wind-sand.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/wind-sand.wav; sourceTree = "<group>"; };
+		491CFFBAD7AB83053B40BB10 /* Resources/Sounds/wind-wooden.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/Sounds/wind-wooden.wav; sourceTree = "<group>"; };
+		18297A60B9E3FA7FC1BD99F1 /* Widget/Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Widget/Assets.xcassets; sourceTree = "<group>"; };
 		AA0000000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/StateFileWriter.swift; sourceTree = "<group>"; };
 		0EFFF04E650B803863A6F50D /* Resources/ratchet.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/ratchet.wav; sourceTree = "<group>"; };
 		154D1083E6664BAE71C4D547 /* Widget/FocusWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Widget/FocusWidget.swift; sourceTree = "<group>"; };
@@ -143,6 +205,37 @@ AB0000000000000000000001,
 				1C9B42FC5D41EC428A30D833 /* Resources/tickEven.wav */,
 				FC30481922BBD831C8D0FADB /* Resources/tickOdd.wav */,
 				5F7F1E279F0DE5483D73BB49 /* Resources/tomato.png */,
+				BED0123D05BC03D6E98F7B28 /* Core/TimerTheme.swift */,
+				CC34AEF47D8BF323BA97EC15 /* Resources/Sounds/alarm-bowl.wav */,
+				E88DEEB277C19BECE0FF062B /* Resources/Sounds/alarm-eggBell.wav */,
+				3F49B99D35B322FB3EAEBE39 /* Resources/Sounds/alarm-glassChime.wav */,
+				B38E3C488BC7B9F6CE73026E /* Resources/Sounds/alarm-gong.wav */,
+				A2CDBAE2720D1F1774F6CD1E /* Resources/Sounds/alarm-handbell.wav */,
+				222193E430AA4E3F0CC8FB0E /* Resources/Sounds/alarm-marimba.wav */,
+				4C3513EA6ED7B5D24DF06D1F /* Resources/Sounds/alarm-templeBlocks.wav */,
+				9DC4CE558A9D4D034EA82273 /* Resources/Sounds/alarm-twinBells.wav */,
+				4BBF9E668AC40851B6C05A49 /* Resources/Sounds/tick-brass-even.wav */,
+				5F7A8C1FE9CD379348C2FC1F /* Resources/Sounds/tick-brass-odd.wav */,
+				4EC8A4E0DD27040A6EC749FB /* Resources/Sounds/tick-chrome-even.wav */,
+				03A92AD6EB9A7CE3DC44F88F /* Resources/Sounds/tick-chrome-odd.wav */,
+				12F7B6AA78E4E6A719201EC6 /* Resources/Sounds/tick-felt-even.wav */,
+				66BF4C35E056CFFE278E3942 /* Resources/Sounds/tick-felt-odd.wav */,
+				056CB8BE91FD58E5CD79403A /* Resources/Sounds/tick-grandfather-even.wav */,
+				4D6A3CE353CE056E0AE7BEBC /* Resources/Sounds/tick-grandfather-odd.wav */,
+				291FFB7A4A3431F2B8EF19BB /* Resources/Sounds/tick-sand-even.wav */,
+				75216602FD0DC4EF1ED664BB /* Resources/Sounds/tick-sand-odd.wav */,
+				92D135C4EB9E35E649F0A1DD /* Resources/Sounds/tick-twinBell-even.wav */,
+				07C21C0C6EC5A3D684C32D29 /* Resources/Sounds/tick-twinBell-odd.wav */,
+				5E4FE58E33A06C6F7F0DD809 /* Resources/Sounds/tick-woodblock-even.wav */,
+				41F4A344073B029FCF09815D /* Resources/Sounds/tick-woodblock-odd.wav */,
+				A640354C3BDE91745B9C472B /* Resources/Sounds/wind-brass.wav */,
+				EB91CAA6619673E4942F160C /* Resources/Sounds/wind-chrome.wav */,
+				8D7E47B1309CFD34497926BC /* Resources/Sounds/wind-deep.wav */,
+				AACCDE965C8380554F5208E7 /* Resources/Sounds/wind-felt.wav */,
+				98232DCE2A188353F750AC85 /* Resources/Sounds/wind-mainspring.wav */,
+				5D18DF160A0AAC9B41A5B3BB /* Resources/Sounds/wind-sand.wav */,
+				491CFFBAD7AB83053B40BB10 /* Resources/Sounds/wind-wooden.wav */,
+				18297A60B9E3FA7FC1BD99F1 /* Widget/Assets.xcassets */,
 				FBDC4F23F93125BBEEAE800C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -182,6 +275,7 @@ AB0000000000000000000003,
 			buildConfigurationList = 9ED0E5B5BC01E6B082EFBF74 /* Build configuration list for PBXNativeTarget "FocusTalkWidget" */;
 			buildPhases = (
 				2D81737A052BBAAD15A6D3C1 /* Sources */,
+				B2EB01E0E895CE4CFAAEAFC4 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -241,10 +335,47 @@ AB0000000000000000000005,
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		B2EB01E0E895CE4CFAAEAFC4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				27E40CA80034E5AAA9631E11 /* Widget/Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		0189424A5A60FED329FA868E /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C4553ACB5B2960069C030490 /* Resources/Sounds/alarm-bowl.wav in Resources */,
+				BDDED44E534952D13E508AEF /* Resources/Sounds/alarm-eggBell.wav in Resources */,
+				229B0F7184D3CBB688E0116C /* Resources/Sounds/alarm-glassChime.wav in Resources */,
+				0FDAED929F2E08037D8A28F2 /* Resources/Sounds/alarm-gong.wav in Resources */,
+				AC67E0AB166C684E07196250 /* Resources/Sounds/alarm-handbell.wav in Resources */,
+				555E40759E332A14E8DE5533 /* Resources/Sounds/alarm-marimba.wav in Resources */,
+				F764CCAD4B35282ED12BF04D /* Resources/Sounds/alarm-templeBlocks.wav in Resources */,
+				0BEA130EFE8C51F36E6C9A0E /* Resources/Sounds/alarm-twinBells.wav in Resources */,
+				9CDB9F5404976BE52E4C0980 /* Resources/Sounds/tick-brass-even.wav in Resources */,
+				1787903FC364D85FFCD181A7 /* Resources/Sounds/tick-brass-odd.wav in Resources */,
+				4022F35423DFFE010D676F5B /* Resources/Sounds/tick-chrome-even.wav in Resources */,
+				60BB880D52C474589775196C /* Resources/Sounds/tick-chrome-odd.wav in Resources */,
+				637E2E239B8E1297CFA35AD5 /* Resources/Sounds/tick-felt-even.wav in Resources */,
+				AD86FADFD5F4245D8C8256E1 /* Resources/Sounds/tick-felt-odd.wav in Resources */,
+				5A24EC78B89A6911CFDEC6CE /* Resources/Sounds/tick-grandfather-even.wav in Resources */,
+				7A8C0CE67E377B36E73DB00F /* Resources/Sounds/tick-grandfather-odd.wav in Resources */,
+				6D239074D489DDF4EAC7E411 /* Resources/Sounds/tick-sand-even.wav in Resources */,
+				07E221020926F7C9B90249CD /* Resources/Sounds/tick-sand-odd.wav in Resources */,
+				8D798CE5687777A09780A7C8 /* Resources/Sounds/tick-twinBell-even.wav in Resources */,
+				4C8958AB2997963C246E8E9F /* Resources/Sounds/tick-twinBell-odd.wav in Resources */,
+				0A46152C25FD67ADFD71639B /* Resources/Sounds/tick-woodblock-even.wav in Resources */,
+				E5C384CFA9788CEF4206C08E /* Resources/Sounds/tick-woodblock-odd.wav in Resources */,
+				5CF1ACF9F9552E5FC372FA27 /* Resources/Sounds/wind-brass.wav in Resources */,
+				A0457F3163BA6B47817254B2 /* Resources/Sounds/wind-chrome.wav in Resources */,
+				34C4F2D2B2A0CA6489230FA0 /* Resources/Sounds/wind-deep.wav in Resources */,
+				83BAD86BD7354A9F02563416 /* Resources/Sounds/wind-felt.wav in Resources */,
+				94EBD5FDCB68BCE758E8CA4A /* Resources/Sounds/wind-mainspring.wav in Resources */,
+				F9D8806A6D58AADF21DD533A /* Resources/Sounds/wind-sand.wav in Resources */,
+				AF83E4B7F3A8A0612B90098A /* Resources/Sounds/wind-wooden.wav in Resources */,
 				EB3E585AD5B30D6C01DF5A84 /* Resources/Assets.xcassets in Resources */,
 				76EA112E7390AD84CD8A2BF0 /* Resources/PrivacyInfo.xcprivacy in Resources */,
 				B49480CFBAC91DF97ACB924A /* Resources/bell.wav in Resources */,
@@ -279,6 +410,7 @@ AB0000000000000000000005,
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D93480F320AC9F9EFE60146B /* Core/TimerTheme.swift in Sources */,
 				2036ECFED102A686AD0653E1 /* App/AudioService.swift in Sources */,
 				EA3848127FE7C7962E215A12 /* App/FocusStore.swift in Sources */,
 				F39B84CDD8EEE0FCCFDA6288 /* App/FocusTalkApp.swift in Sources */,

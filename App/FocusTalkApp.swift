@@ -8,13 +8,10 @@ import UIKit
     var body: some Scene {
         WindowGroup {
             HomeView(store: store).preferredColorScheme(.dark)
+                // System alerts (permissions, Control Center) make the scene inactive, not backgrounded;
+                // treating them as background cut off the first spoken line and the first wind-up.
                 .onChange(of: scenePhase) { _, phase in
-                    store.setForeground(phase == .active)
-                }
-                .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { notification in
-                    guard let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-                          raw == AVAudioSession.InterruptionType.began.rawValue else { return }
-                    store.audio.stop()
+                    store.setForeground(phase != .background)
                 }
         }
     }

@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import Combine
 
 struct HomeView: View {
     @Bindable var store: FocusStore
@@ -22,7 +23,8 @@ struct HomeView: View {
         if let s = store.session, !s.plan.blocks.isEmpty {
             if s.status == .running { return .running }
             if s.status == .paused { return .paused }
-            if s.status == .finished || s.status == .ended { return .finished }
+            // A new plan proposed during the session stays offered after the session ends.
+            if (s.status == .finished || s.status == .ended) && store.proposal == nil { return .finished }
         }
         if store.proposal != nil { return .proposal }
         return .idle
@@ -160,11 +162,12 @@ struct HomeView: View {
             }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase != .active {
+            // Permission alerts make the scene inactive while listening is starting; only stop on background.
+            if phase == .background {
                 stopListening()
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification).receive(on: DispatchQueue.main)) { _ in
             stopListening()
         }
     }
@@ -180,9 +183,9 @@ struct HomeView: View {
                 endPoint: .bottom
             )
 
-            // Tomato Bloom
+            // Object Bloom (tomato red by default; follows the selected timer object)
             RadialGradient(
-                colors: [Color(red: 255/255, green: 72/255, blue: 50/255).opacity(0.22), Color.clear],
+                colors: [objectGlow.opacity(0.22), Color.clear],
                 center: UnitPoint(x: 0.5, y: 0.30),
                 startRadius: 0,
                 endRadius: 360
@@ -205,6 +208,11 @@ struct HomeView: View {
             )
         }
         .drawingGroup()
+    }
+
+    private var objectGlow: Color {
+        let glow = store.settings.timerObject.focusGlow
+        return Color(red: glow.red, green: glow.green, blue: glow.blue)
     }
 
     // MARK: - Top Bar
@@ -258,14 +266,19 @@ struct HomeView: View {
 
         return ZStack(alignment: .bottom) {
             // Tomato with Dial & Halo
-            TomatoView(
+            TimerObjectView(
+                object: store.settings.object,
                 minutes: store.currentBlockMinutes,
-                canAdjust: !isListening && !store.busy && phase != .proposal,
+                // The dial spans 60 minutes; a longer remaining block can't be shown, so dragging it
+                // would silently cut time. Use skip/end or the plan for those blocks.
+                canAdjust: !isListening && !store.busy && phase != .proposal && store.currentBlockMinutes <= 60.01,
+                blockID: store.session?.isActive == true ? store.session?.current?.id : nil,
                 isBreak: isBreakBlock,
                 isListening: isListening,
                 isRattling: store.isRattling,
-                onChange: { newMinutes in
-                    store.setManualMinutes(newMinutes)
+                isRunning: store.session?.status == .running,
+                onChange: { newMinutes, block in
+                    store.setManualMinutes(newMinutes, expectedBlock: block)
                 },
                 onRatchet: { crossedNotches in
                     store.audio.ratchet(notches: crossedNotches, haptics: store.settings.haptics)
@@ -481,7 +494,7 @@ struct HomeView: View {
     private var subText: String {
         switch phase {
         case .idle:
-            return "Tap the mic and say your tasks and how much time you have. Or twist the tomato to set a timer."
+            return "Tap the mic and say your tasks and how much time you have. Or twist the \(store.settings.timerObject.name.lowercased()) to set a timer."
         case .proposal:
             let focusCount = store.proposal?.focusBlockCount ?? 1
             let totalMins = store.proposal?.totalMinutes ?? 30
@@ -1007,13 +1020,15 @@ struct HomeView: View {
                         }
                     }
 
+                    timerAndSoundsCard
+
                     // Settings Group (Toggles)
                     VStack(spacing: 0) {
                         settingToggle(title: "Read replies aloud", subtitle: "FocusTalk speaks its answers and each new block.", isOn: binding(\.voice))
 
                         Divider().background(Color.white.opacity(0.14))
 
-                        settingToggle(title: "Ticking sound", subtitle: "The tomato ticks while a block runs, like the real timer.", isOn: binding(\.tick))
+                        settingToggle(title: "Haptics", subtitle: "Feel the winding clicks and each tick.", isOn: binding(\.haptics))
 
                         Divider().background(Color.white.opacity(0.14))
 
@@ -1068,6 +1083,116 @@ struct HomeView: View {
         }
         .frame(maxHeight: maxHeight)
         .liquidGlass(cornerRadius: 32, isSheet: true)
+    }
+
+    // MARK: - Timer object and sounds
+    private var timerAndSoundsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Timer")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .padding(.top, 14)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(TimerObjectInfo.all) { info in
+                        objectChoice(info)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+
+            Divider().background(Color.white.opacity(0.14))
+
+            soundRow(title: "Winding", role: .wind)
+            Divider().background(Color.white.opacity(0.14))
+            soundRow(title: "Ticking", role: .tick)
+            Divider().background(Color.white.opacity(0.14))
+            soundRow(title: "Alarm", role: .alarm)
+                .padding(.bottom, 4)
+        }
+        .padding(.horizontal, 16)
+        .background(Color(red: 120/255, green: 120/255, blue: 128/255).opacity(0.24))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    private func objectChoice(_ info: TimerObjectInfo) -> some View {
+        let selected = store.settings.object == info.id
+        return Button {
+            withAnimation(reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.86)) {
+                store.selectObject(info.id)
+            }
+        } label: {
+            VStack(spacing: 6) {
+                Image("thumb-\(info.id.rawValue)")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 52, height: 52)
+                    .padding(6)
+                    .background(Color.white.opacity(selected ? 0.16 : 0.06), in: RoundedRectangle(cornerRadius: 16))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(selected ? Color.white.opacity(0.85) : Color.clear, lineWidth: 2)
+                    )
+                Text(info.name)
+                    .font(.system(size: 12, weight: selected ? .semibold : .regular))
+                    .foregroundStyle(Color.white.opacity(selected ? 1 : 0.7))
+                    .lineLimit(1)
+            }
+            .frame(width: 72)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("Timer object \(info.name)")
+        .accessibilityLabel(info.name)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private func soundRow(title: String, role: SoundRole) -> some View {
+        let current = SoundCatalog.option(store.settings.soundID(for: role), for: role)
+        return HStack(spacing: 10) {
+            Text(title)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+            Spacer()
+            Menu {
+                Picker(title, selection: soundBinding(role)) {
+                    ForEach(SoundCatalog.options(for: role)) { option in
+                        Text(option.name).tag(option.id)
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(current.name)
+                        .font(.system(size: 15))
+                        .lineLimit(1)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundStyle(Color.white.opacity(0.75))
+            }
+            .accessibilityIdentifier(title)
+            .accessibilityLabel(title)
+            .accessibilityValue(current.name)
+
+            Button {
+                store.previewSound(for: role)
+            } label: {
+                Image(systemName: "play.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(current.files.isEmpty ? Color.white.opacity(0.25) : Color.white.opacity(0.85))
+            }
+            .buttonStyle(.plain)
+            .disabled(current.files.isEmpty)
+            .accessibilityLabel("Preview \(title.lowercased()) sound")
+        }
+        .frame(minHeight: 44)
+    }
+
+    private func soundBinding(_ role: SoundRole) -> Binding<String> {
+        Binding(
+            get: { store.settings.soundID(for: role) },
+            set: { store.setSound($0, for: role) }
+        )
     }
 
     private func tileButton(icon: String, title: String, disabled: Bool, action: @escaping () -> Void) -> some View {
