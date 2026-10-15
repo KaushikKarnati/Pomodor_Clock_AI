@@ -76,7 +76,7 @@ import AVFoundation
 
     /// Current whole seconds on active block (for countdown readout)
     var displaySeconds: Int {
-        max(0, Int(remaining.rounded(.down)))
+        max(0, Int(remaining.rounded(.up)))
     }
 
     /// Remaining time for the entire session across all blocks
@@ -88,27 +88,42 @@ import AVFoundation
     let voice = VoiceService()
     private let disk: any FocusPersisting
     private let planner: any FocusPlanning
-    private let services = SessionServices()
+    private let services: any SessionServing
     private var ticker: Task<Void, Never>?
     private var generationTask: Task<Void, Never>?
     private var toastTask: Task<Void, Never>?
     private var lastSecond: Int?
     private var persistenceBlocked = false
 
-    init(disk: any FocusPersisting = DiskStore(), planner: any FocusPlanning = PlanningService(), audio: any FocusAudioPlaying = AudioService()) {
-        self.disk = disk; self.planner = planner; self.audio = audio
+    init(disk: any FocusPersisting = DiskStore(), planner: any FocusPlanning = PlanningService(), audio: any FocusAudioPlaying = AudioService(), services: any SessionServing = SessionServices()) {
+        self.disk = disk; self.planner = planner; self.audio = audio; self.services = services
         do { saved = try disk.load() } catch { self.error = "Saved data could not be opened. It has been preserved. \(error.localizedDescription)"; persistenceBlocked = true }
         let autoAdvance = settings.auto
         _ = saved.session?.reconcile(at: .now, auto: autoAdvance)
         archiveFinished(); persist(); services.sync(session: session, auto: settings.auto)
+        updateTicker()
+    }
+
+    /// No wakeups while idle, paused, or backgrounded. Deadlines remain authoritative.
+    private func updateTicker() {
+        ticker?.cancel()
+        ticker = nil
+        guard isForeground, session?.status == .running else { return }
         ticker = Task { [weak self] in
             while !Task.isCancelled {
-                let isRunning = await (self?.session?.status == .running)
-                try? await Task.sleep(nanoseconds: isRunning ? 200_000_000 : 500_000_000)
+                guard let delay = self?.nextTickDelay else { return }
+                do { try await Task.sleep(for: .seconds(delay)) } catch { return }
                 guard !Task.isCancelled else { return }
                 self?.tick()
             }
         }
+    }
+
+    private var nextTickDelay: Double? {
+        guard isForeground, let session, session.status == .running else { return nil }
+        let seconds = session.secondsLeft(at: .now)
+        // Just after the next displayed-second boundary; never poll at 5 Hz.
+        return max(0.01, min(1, seconds - ceil(seconds) + 1 + 0.005))
     }
 
     func toast(_ message: String) {
@@ -141,12 +156,12 @@ import AVFoundation
             if let s = session {
                 if s.status == .finished {
                     toast("Session done")
-                    if settings.voice {
+                    if settings.voice && isForeground && !isListening {
                         voice.speak("That’s the whole session. Nice work.")
                     }
                 } else if let next = s.current {
                     toast("Now: \(next.title)")
-                    if settings.voice {
+                    if settings.voice && isForeground && !isListening {
                         let lead = (prevBlock?.isBreak == true) ? "Break’s over." : "Time’s up."
                         let line: String
                         if next.isBreak {
@@ -161,7 +176,7 @@ import AVFoundation
             }
         }
         guard isForeground, !isListening, session?.status == .running, transitions == 0 else { lastSecond = nil; return }
-        let second = Int(remaining.rounded(.down))
+        let second = Int(remaining.rounded(.up))
         if second != lastSecond {
             if lastSecond != nil, second > 0 { audio.tick(odd: second % 2 != 0, sound: settings.tick, haptics: settings.haptics) }
             lastSecond = second
@@ -183,6 +198,7 @@ import AVFoundation
             now = .now; let autoAdvance = settings.auto; _ = saved.session?.reconcile(at: now, auto: autoAdvance)
             archiveFinished(); persist(); services.sync(session: session, auto: settings.auto)
         }
+        updateTicker()
     }
 
     func setListening(_ value: Bool) {
@@ -195,7 +211,12 @@ import AVFoundation
     }
 
     func saveSettings(_ value: FocusSettings) {
-        tick(); saved.settings = value; persist(); services.sync(session: session, auto: value.auto)
+        tick()
+        saved.settings = value
+        if !value.voice { voice.stop() }
+        persist()
+        services.sync(session: session, auto: value.auto)
+        updateTicker()
     }
 
     func propose(words: String, budget: Int = 30) {
@@ -203,15 +224,16 @@ import AVFoundation
         busy = true
         reply = ""
         said = words
-        proposal = nil
+        error = nil
 
-        // Check local quick command
+        // Preserve the proposal until acceptance commands have been handled.
         if let cmd = matchQuickCommand(words) {
             busy = false
             handleQuickCommand(cmd)
             return
         }
 
+        proposal = nil
         let current = session?.plan
         generationTask = Task { [weak self] in
             guard let self else { return }
@@ -221,7 +243,9 @@ import AVFoundation
                 proposal = result.plan
                 reply = result.reply
                 busy = false
-                if settings.voice, !result.reply.isEmpty {
+                if let plan = result.plan, session?.isActive != true {
+                    apply(plan, startImmediately: true)
+                } else if settings.voice, isForeground, !isListening, !result.reply.isEmpty {
                     voice.speak(result.reply)
                 }
             } catch {
@@ -233,7 +257,7 @@ import AVFoundation
     }
 
     private func matchQuickCommand(_ text: String) -> String? {
-        let w = text.lowercased().trimmingCharacters(in: .punctuationCharacters).trimmingCharacters(in: .whitespacesAndNewlines)
+        let w = text.lowercased().trimmingCharacters(in: .punctuationCharacters.union(.whitespacesAndNewlines))
         if proposal != nil && ["start", "go", "begin", "let's go", "lets go", "looks good", "sounds good", "do it", "start session"].contains(w) {
             return "accept"
         }
@@ -280,8 +304,9 @@ import AVFoundation
             reply = "Skipped."
             if settings.voice { voice.speak(reply) }
         case "plus":
+            let before = session
             extend()
-            reply = "Added five minutes."
+            reply = session == before ? "This block or session has reached its time limit." : "Added five minutes."
             if settings.voice { voice.speak(reply) }
         case "end":
             end()
@@ -303,7 +328,7 @@ import AVFoundation
             cancelGeneration()
             if let first = valid.blocks.first {
                 toast("Now: \(first.title)")
-                if settings.voice && startImmediately {
+                if settings.voice && startImmediately && isForeground && !isListening {
                     let goalText = first.goal.isEmpty ? "" : " \(first.goal)."
                     voice.speak(first.isBreak ? "Starting with break, \(first.minutes) minutes." : "First up: \(first.title).\(goalText) \(first.minutes) minutes.")
                 }
@@ -313,6 +338,7 @@ import AVFoundation
     }
 
     func setManualMinutes(_ minutes: Int) {
+        tick()
         if minutes == 0 {
             if session?.isActive == true {
                 advanceBlockToNext()
@@ -323,15 +349,12 @@ import AVFoundation
             return
         }
         if var s = saved.session, s.isActive {
-            let idx = s.index
-            s.plan.blocks[idx].minutes = max(s.plan.blocks[idx].minutes, minutes)
-            s.remaining = Double(minutes * 60)
-            if s.status == .running {
-                s.deadline = now.addingTimeInterval(s.remaining)
-            }
-            saved.session = s
-            toast("\(minutes) minute\(minutes == 1 ? "" : "s") on the timer")
-            changed()
+            do {
+                try s.setRemainingMinutes(minutes, at: .now)
+                saved.session = s
+                toast("\(minutes) minute\(minutes == 1 ? "" : "s") on the timer")
+                changed()
+            } catch { self.error = error.localizedDescription }
         } else {
             let plan = FocusPlan(blocks: [.init(title: "Focus", minutes: minutes)], budgetMinutes: minutes)
             apply(plan, startImmediately: true)
@@ -370,7 +393,12 @@ import AVFoundation
 
     func extend() {
         tick()
+        let before = saved.session
         saved.session?.extend(at: .now)
+        guard saved.session != before else {
+            notice = "This block or session has reached its time limit."
+            return
+        }
         toast("Added 5 minutes")
         changed()
     }
@@ -400,6 +428,7 @@ import AVFoundation
     }
 
     func startOver() {
+        if session?.isActive == true { end() }
         cancelGeneration()
         audio.stop()
         voice.stop()
@@ -451,6 +480,7 @@ import AVFoundation
         lastSecond = nil
         persist()
         services.sync(session: session, auto: settings.auto)
+        updateTicker()
     }
 
     private func archiveFinished() {
@@ -460,6 +490,10 @@ import AVFoundation
 
     private func persist() {
         guard !persistenceBlocked else { return }
-        do { try disk.save(saved) } catch { self.error = "Couldn't save this session: \(error.localizedDescription)" }
+        disk.save(saved) { [weak self] result in
+            if case .failure(let error) = result {
+                self?.error = "Couldn't save this session: \(error.localizedDescription)"
+            }
+        }
     }
 }

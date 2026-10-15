@@ -1,5 +1,4 @@
 import AVFoundation
-import CoreHaptics
 import UIKit
 
 @MainActor protocol FocusAudioPlaying {
@@ -15,7 +14,6 @@ import UIKit
     private let tickEvenFeedback = UIImpactFeedbackGenerator(style: .light)
     private var lastRatchet = Date.distantPast
     private var interrupted = false
-    private var ambientConfigured = false
     private var interruptionObserver: NSObjectProtocol?
 
     init() {
@@ -24,7 +22,8 @@ import UIKit
             Task { @MainActor in
                 guard let self else { return }
                 self.interrupted = raw == AVAudioSession.InterruptionType.began.rawValue
-                if self.interrupted { self.ambientConfigured = false; self.stop() }
+                if self.interrupted { self.stop() }
+                else { AudioSessionCoordinator.shared.prepareAmbient() }
             }
         }
         for name in ["tickOdd", "tickEven", "ratchet", "bell"] {
@@ -40,24 +39,15 @@ import UIKit
     }
 
     func ambient() {
-        guard !ambientConfigured else { return }
-        ambientConfigured = true
-        Task.detached(priority: .userInitiated) {
-            let session = AVAudioSession.sharedInstance()
-            try? session.setCategory(.ambient, mode: .default)
-            try? session.setActive(true)
-        }
+        AudioSessionCoordinator.shared.prepareAmbient()
     }
 
     private func play(_ name: String) {
         guard !interrupted, UIApplication.shared.applicationState == .active else { return }
         if name == "bell" { players["tickOdd"]?.stop(); players["tickEven"]?.stop() }
         guard let player = players[name] else { return }
-        if player.isPlaying {
-            player.currentTime = 0
-        } else {
-            player.play()
-        }
+        player.currentTime = 0
+        player.play()
     }
 
     func tick(odd: Bool, sound: Bool, haptics: Bool) {
@@ -83,5 +73,45 @@ import UIKit
 
     func stop() {
         players.values.forEach { $0.stop() }
+    }
+}
+
+/// All category/activation changes share one queue, including rapid mic restarts.
+/// `recording` is accessed only by that queue.
+final class AudioSessionCoordinator: @unchecked Sendable {
+    static let shared = AudioSessionCoordinator()
+    private let queue = DispatchQueue(label: "com.focustalk.audio-session", qos: .userInitiated)
+    private var recording = false
+
+    func prepareAmbient() {
+        queue.async { [self] in
+            guard !recording else { return }
+            let session = AVAudioSession.sharedInstance()
+            try? session.setCategory(.ambient, mode: .default)
+            try? session.setActive(true)
+        }
+    }
+
+    func prepareRecording() async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            queue.async { [self] in
+                let result = Result<Void, Error> {
+                    recording = true
+                    let session = AVAudioSession.sharedInstance()
+                    try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetoothHFP])
+                    try session.setActive(true)
+                }
+                continuation.resume(with: result)
+            }
+        }
+    }
+
+    func finishRecording() {
+        queue.async { [self] in
+            recording = false
+            let session = AVAudioSession.sharedInstance()
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            try? session.setCategory(.ambient, mode: .default)
+        }
     }
 }

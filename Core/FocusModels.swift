@@ -36,12 +36,12 @@ struct FocusPlan: Codable, Equatable, Sendable {
     var focusBlockCount: Int { blocks.filter { !$0.isBreak }.count }
     func validated() throws -> Self {
         guard !blocks.isEmpty, blocks.count <= 30 else { throw PlanError.invalid("Add between 1 and 30 blocks.") }
-        guard (1...480).contains(budgetMinutes), totalMinutes <= budgetMinutes else {
-            throw PlanError.invalid("The plan must fit within your available time (up to 8 hours).")
-        }
         guard Set(blocks.map(\.id)).count == blocks.count,
               blocks.allSatisfy({ !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.title.count <= 160 && (1...120).contains($0.minutes) }) else {
             throw PlanError.invalid("Each block needs a title and a duration of 1–120 minutes.")
+        }
+        guard (1...480).contains(budgetMinutes), totalMinutes <= budgetMinutes else {
+            throw PlanError.invalid("The plan must fit within your available time (up to 8 hours).")
         }
         return self
     }
@@ -96,6 +96,33 @@ struct FocusSession: Codable, Identifiable, Equatable, Sendable {
         plan.budgetMinutes = max(plan.budgetMinutes, plan.totalMinutes)
         if status == .running { deadline = now.addingTimeInterval(remaining) }
     }
+    /// Changes the remaining time without invalidating the persisted plan budget.
+    mutating func setRemainingMinutes(_ minutes: Int, at now: Date) throws {
+        guard isActive, plan.blocks.indices.contains(index), (1...120).contains(minutes) else {
+            throw PlanError.invalid("Choose a duration from 1 to 120 minutes.")
+        }
+        var updated = plan
+        updated.blocks[index].minutes = max(updated.blocks[index].minutes, minutes)
+        updated.budgetMinutes = max(updated.budgetMinutes, updated.totalMinutes)
+        plan = try updated.validated()
+        remaining = Double(minutes * 60)
+        deadline = status == .running ? now.addingTimeInterval(remaining) : nil
+    }
+
+    /// Past rows use the original schedule; current/future rows follow remaining time.
+    /// Paused rows assume resuming now, since a future resume time is unknowable.
+    func timelineStartDates(at now: Date) -> [Date] {
+        var date = createdAt
+        return plan.blocks.enumerated().map { offset, block in
+            if offset == index, isActive {
+                date = now.addingTimeInterval(secondsLeft(at: now) - block.seconds)
+            }
+            let start = date
+            date = date.addingTimeInterval(block.seconds)
+            return start
+        }
+    }
+
     mutating func skip(at now: Date, auto: Bool) {
         guard let block = current, [.ready,.paused,.running].contains(status) else { return }
         let wasRunning = status == .running
@@ -112,14 +139,14 @@ struct FocusSession: Codable, Identifiable, Equatable, Sendable {
         return result
     }
 }
-struct FocusSettings: Codable, Equatable {
+struct FocusSettings: Codable, Equatable, Sendable {
     var voice = true
     var tick = true
     var haptics = true
     var auto = true
 
     enum CodingKeys: String, CodingKey {
-        case tick, haptics, auto
+        case voice, tick, haptics, auto
     }
 
     init(voice: Bool = true, tick: Bool = true, haptics: Bool = true, auto: Bool = true) {
@@ -134,18 +161,11 @@ struct FocusSettings: Codable, Equatable {
         self.tick = try container.decodeIfPresent(Bool.self, forKey: .tick) ?? true
         self.haptics = try container.decodeIfPresent(Bool.self, forKey: .haptics) ?? true
         self.auto = try container.decodeIfPresent(Bool.self, forKey: .auto) ?? true
-        let dynamicContainer = try? decoder.container(keyedBy: DynamicKey.self)
-        self.voice = (try? dynamicContainer?.decodeIfPresent(Bool.self, forKey: DynamicKey(stringValue: "voice")!)) ?? true
+        self.voice = try container.decodeIfPresent(Bool.self, forKey: .voice) ?? true
     }
 
-    private struct DynamicKey: CodingKey {
-        var stringValue: String
-        init?(stringValue: String) { self.stringValue = stringValue }
-        var intValue: Int? { nil }
-        init?(intValue: Int) { nil }
-    }
 }
-struct SavedState: Codable {
+struct SavedState: Codable, Sendable {
     var version = 1
     var session: FocusSession?
     var history: [FocusSession] = []

@@ -134,6 +134,20 @@ struct HomeView: View {
             speech.onFinished = { text in
                 handleSpeechFinished(text)
             }
+            if let message = store.error { store.reply = message }
+        }
+        .onChange(of: store.error) { _, message in
+            if let message { store.reply = message }
+        }
+        .onChange(of: store.notice) { _, message in
+            if let message { store.reply = message }
+        }
+        .onChange(of: speech.error) { _, message in
+            if let message {
+                store.reply = message
+                store.toast(message)
+                showTypedInput = true
+            }
         }
         .onChange(of: speech.text) { _, text in
             words = text
@@ -787,8 +801,13 @@ struct HomeView: View {
         guard let blocks = displayedBlocks, !blocks.isEmpty else { return "Nothing planned yet." }
         let focusCount = blocks.filter { !$0.isBreak }.count
         let totalMins = blocks.reduce(0) { $0 + $1.minutes }
-        let end = formatTime(Date.now.addingTimeInterval(Double(totalMins * 60)))
-        return "\(focusCount) focus block\(focusCount == 1 ? "" : "s"). Done around \(end)."
+        let seconds = store.proposal == nil ? (store.session?.sessionSecondsLeft(at: .now) ?? Double(totalMins * 60)) : Double(totalMins * 60)
+        if store.proposal == nil, let session = store.session, [.finished, .ended].contains(session.status) {
+            return "\(session.completed.count) completed, \(session.skipped.count) skipped."
+        }
+        let end = formatTime(Date.now.addingTimeInterval(seconds))
+        let qualifier = store.session?.status == .paused && store.proposal == nil ? " if resumed now" : ""
+        return "\(focusCount) focus block\(focusCount == 1 ? "" : "s"). Done around \(end)\(qualifier)."
     }
 
     private func taskChipsView(blocks: [FocusBlock]) -> some View {
@@ -826,18 +845,20 @@ struct HomeView: View {
     }
 
     private func timelineView(blocks: [FocusBlock]) -> some View {
-        let activeIdx = store.session?.index
-        let isSessionActive = store.session?.isActive == true
+        let activeIdx = store.proposal == nil ? store.session?.index : nil
+        let isSessionActive = store.proposal == nil && store.session?.isActive == true
         let skippedSet = Set(store.session?.skipped ?? [])
         let completedSet = Set(store.session?.completed ?? [])
 
         var elapsed: Double = 0
         let baseDate = Date.now
+        let scheduledDates = store.proposal == nil ? store.session?.timelineStartDates(at: baseDate) : nil
         var rowItems: [TimelineRowItem] = []
         rowItems.reserveCapacity(blocks.count)
 
         for (index, block) in blocks.enumerated() {
-            let timeStr = formatTime(baseDate.addingTimeInterval(elapsed))
+            let rowDate = scheduledDates.flatMap { $0.indices.contains(index) ? $0[index] : nil } ?? baseDate.addingTimeInterval(elapsed)
+            let timeStr = formatTime(rowDate)
             elapsed += Double(block.minutes * 60)
             let isCurrent = (activeIdx == index && isSessionActive)
             let isSkipped = skippedSet.contains(block.id)
@@ -1139,13 +1160,11 @@ struct HomeView: View {
         quietProgress = 1.0
         guard isListening, !speech.text.isEmpty else { return }
 
+        withAnimation(reduceMotion ? nil : .linear(duration: 1.8)) {
+            quietProgress = 0
+        }
         quietTimer = Task { @MainActor in
-            let steps = 30
-            for i in 1...steps {
-                try? await Task.sleep(for: .milliseconds(60))
-                guard !Task.isCancelled else { return }
-                quietProgress = CGFloat(steps - i) / CGFloat(steps)
-            }
+            do { try await Task.sleep(for: .milliseconds(1800)) } catch { return }
             guard !Task.isCancelled, isListening else { return }
             speech.finish()
         }
