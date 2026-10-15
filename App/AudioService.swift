@@ -3,7 +3,7 @@ import UIKit
 
 @MainActor protocol FocusAudioPlaying {
     func tick(odd: Bool, sound: Bool, haptics: Bool)
-    func ratchet(haptics: Bool)
+    func ratchet(notches: Int, haptics: Bool)
     func bell()
     func stop()
 }
@@ -12,7 +12,7 @@ import UIKit
     private let ratchetFeedback = UIImpactFeedbackGenerator(style: .rigid)
     private let tickOddFeedback = UIImpactFeedbackGenerator(style: .medium)
     private let tickEvenFeedback = UIImpactFeedbackGenerator(style: .light)
-    private var lastRatchet = Date.distantPast
+    private var lastRatchetHaptic: TimeInterval = -.infinity
     private var interrupted = false
     private var interruptionObserver: NSObjectProtocol?
 
@@ -38,10 +38,10 @@ import UIKit
         AudioSessionCoordinator.shared.prepareAmbient()
     }
 
-    private func play(_ name: String) {
+    private func play(_ name: String, repeats: Int = 1) {
         guard !interrupted, UIApplication.shared.applicationState == .active else { return }
         let sounds = self.sounds
-        AudioSessionCoordinator.shared.perform { sounds.play(name) }
+        AudioSessionCoordinator.shared.perform { sounds.play(name, repeats: repeats) }
     }
 
     func tick(odd: Bool, sound: Bool, haptics: Bool) {
@@ -53,11 +53,12 @@ import UIKit
         }
     }
 
-    func ratchet(haptics: Bool) {
-        guard Date.now.timeIntervalSince(lastRatchet) > 0.03 else { return }
-        lastRatchet = .now
-        play("ratchet")
-        if haptics {
+    func ratchet(notches: Int, haptics: Bool) {
+        guard notches > 0 else { return }
+        play("ratchet", repeats: min(notches, 3))
+        let now = ProcessInfo.processInfo.systemUptime
+        if haptics, now - lastRatchetHaptic >= 0.03 {
+            lastRatchetHaptic = now
             ratchetFeedback.impactOccurred()
             ratchetFeedback.prepare()
         }
@@ -73,8 +74,18 @@ import UIKit
 
 /// Only accessed from the shared audio worker, including implicit activation in
 /// prepareToPlay/play. Haptic generators remain on the main actor.
-private final class SoundPlayers: @unchecked Sendable {
-    private var players: [String: AVAudioPlayer] = [:]
+protocol AudioClipPlaying: AnyObject {
+    var isPlaying: Bool { get }
+    var currentTime: TimeInterval { get set }
+    var numberOfLoops: Int { get set }
+    @discardableResult func play() -> Bool
+    func stop()
+}
+extension AVAudioPlayer: AudioClipPlaying {}
+
+final class SoundPlayers: @unchecked Sendable {
+    private var players: [String: any AudioClipPlaying]
+    init(players: [String: any AudioClipPlaying] = [:]) { self.players = players }
     func prepare() {
         dispatchPrecondition(condition: .notOnQueue(.main))
         for name in ["tickOdd", "tickEven", "ratchet", "bell"] {
@@ -85,10 +96,15 @@ private final class SoundPlayers: @unchecked Sendable {
             }
         }
     }
-    func play(_ name: String) {
+    func play(_ name: String, repeats: Int = 1) {
         dispatchPrecondition(condition: .notOnQueue(.main))
         if name == "bell" { players["tickOdd"]?.stop(); players["tickEven"]?.stop() }
         guard let player = players[name] else { return }
+        // Let the audible transient finish instead of repeatedly rewinding it.
+        // Fast jumps use immediate playback of up to three copies of the same
+        // short sample. No scheduled voices or delayed backlog are created.
+        if name == "ratchet", player.isPlaying { return }
+        player.numberOfLoops = name == "ratchet" ? min(3, max(1, repeats)) - 1 : 0
         player.currentTime = 0
         player.play()
     }

@@ -152,7 +152,7 @@ import XCTest
 }
 @MainActor private final class SilentAudio: FocusAudioPlaying {
     func tick(odd: Bool, sound: Bool, haptics: Bool) {}
-    func ratchet(haptics: Bool) {}
+    func ratchet(notches: Int, haptics: Bool) {}
     func bell() {}
     func stop() {}
 }
@@ -223,4 +223,51 @@ private final class AudioTrace: @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }
         entries.append(value)
     }
+}
+
+final class RatchetPlaybackTests: XCTestCase {
+    func testRapidRequestsDoNotCutOffAnAudibleClick() {
+        let done = expectation(description: "Ratchet playback")
+        DispatchQueue.global().async {
+            let clip = TestAudioClip()
+            let sounds = SoundPlayers(players: ["ratchet": clip])
+            sounds.play("ratchet")
+            clip.currentTime = 0.005
+            for _ in 0..<100 { sounds.play("ratchet", repeats: 3) }
+            XCTAssertEqual(clip.starts, 1)
+            XCTAssertEqual(clip.currentTime, 0.005)
+            clip.isPlaying = false // Natural completion allows the next click.
+            sounds.play("ratchet", repeats: 3)
+            XCTAssertEqual(clip.starts, 2)
+            XCTAssertEqual(clip.numberOfLoops, 2)
+            done.fulfill()
+        }
+        wait(for: [done], timeout: 3)
+    }
+
+    func testFastJumpIsShortAndStopCancelsIt() {
+        let done = expectation(description: "Bounded immediate playback")
+        DispatchQueue.global().async {
+            let clip = TestAudioClip()
+            let sounds = SoundPlayers(players: ["ratchet": clip])
+            sounds.play("ratchet", repeats: 60)
+            XCTAssertEqual(clip.starts, 1)
+            XCTAssertEqual(clip.numberOfLoops, 2)
+            sounds.stop()
+            XCTAssertFalse(clip.isPlaying)
+            sounds.play("ratchet")
+            XCTAssertEqual(clip.numberOfLoops, 0)
+            done.fulfill()
+        }
+        wait(for: [done], timeout: 3)
+    }
+}
+
+private final class TestAudioClip: AudioClipPlaying {
+    var isPlaying = false
+    var currentTime: TimeInterval = 0
+    var numberOfLoops = 0
+    var starts = 0
+    func play() -> Bool { starts += 1; isPlaying = true; return true }
+    func stop() { isPlaying = false }
 }
