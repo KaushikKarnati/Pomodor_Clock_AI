@@ -1,0 +1,45 @@
+# FocusTalk
+
+Native SwiftUI iPhone app based on the supplied Claude artifact, including its tomato artwork and mechanically synthesized sound effects, plus tick and ratchet haptics.
+
+## Open and run
+
+Open `FocusTalk.xcodeproj`, select the **FocusTalk** scheme and an iPhone simulator, and Run. Deployment target: iOS 26. The development environment used Xcode 27.0.
+
+Ram Karnati’s development team is configured for both targets. The app was installed on the authorized connected iPhone 17 Pro. Signing credentials remain in the local keychain and are not included in this project. If you use a different team, change Signing & Capabilities for both targets.
+
+## Features
+
+- Native dial, task plan editor, timer, pause/extend/skip/end, local history and reuse.
+- Apple on-device Speech recognition with editable text and manual fallback. Finishing speech automatically requests a plan. The home-screen mic opens a live glass transcription bubble; no voice sheet.
+- Foundation Models structured planning with availability handling, budget validation, cancellation, and automatic start after successful generation.
+- Original source-derived bell, alternating ticks, and ratchet. Separate tick and mechanical-haptics settings. Spoken output is removed.
+- Persisted timer deadlines, local notifications, and ActivityKit Lock Screen / Dynamic Island presentation.
+
+## Tests
+
+```sh
+swift test
+xcodebuild -project FocusTalk.xcodeproj -scheme FocusTalk -destination 'platform=iOS Simulator,name=iPhone 17 Pro' CODE_SIGNING_ALLOWED=NO test
+```
+
+Core tests use an injected clock through explicit dates. UI tests use separate local test storage and exercise real native views. `--ui-testing` and `--reset-ui-state` are Debug-only test arguments; normal user storage is not reset.
+
+See `Release/VALIDATION.md` for actual results and unverified physical-device checks. `Release/AUDIO-PROVENANCE.md` documents the exact source parameters and differences. `Release/APP-STORE.md` contains store copy, privacy text, and owner release inputs.
+
+## Architecture
+
+`Core` holds Codable plan/session models and deterministic timer transitions. `App` holds SwiftUI views, an observable store, and separate planning, speech, audio, persistence and notification services. `Widget` contains the Live Activity. No server, package dependencies, analytics, login, or external AI API is used. Reference HTML is not bundled or executed.
+
+The current speech implementation uses Apple's `SFSpeechRecognizer` with `requiresOnDeviceRecognition = true`; it deliberately refuses cloud transcription. Missing on-device recognition falls back to typing. Foundation Models is separate from speech transcription.
+
+## Known platform boundaries
+
+- Foreground speech, audio ticks, and haptics stop when the app is backgrounded or interrupted. Local notification sound follows iOS settings and is not a guarantee of an audible alarm in silent mode.
+- Background block progression is computed from persisted deadlines. With automatic progression enabled, the Live Activity shows total remaining session time; otherwise it shows the current block. The dial uses system-driven circular progress, not a continuous custom rotation. No background execution or server push is assumed.
+- AI and speech behavior, physical audio parity, and haptic feel need a supported physical iPhone. Simulator tests cannot establish those results.
+- If saved data is unreadable, the original file is preserved and writes are blocked for that launch; the app reports the issue rather than replacing the file.
+
+Saving or accepting a plan starts its timer immediately. Setting the tomato dial leaves it ready; tap Start to begin. New AI plans start automatically. Replacing an active session still requires inline confirmation. All editing, settings, history, and privacy content expand on the home screen.
+
+The main dial and countdown show full remaining session time, including breaks. Break durations do not imply equal-sized work intervals. The red X beside the active timer opens an inline end-and-save confirmation.

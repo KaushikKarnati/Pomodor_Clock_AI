@@ -1,0 +1,543 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0CE91FB4D3CCFB454A4F1BE1 /* Core/FocusModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 543559CAAFABCB8D87944E91 /* Core/FocusModels.swift */; };
+		12777128847F5891217CCD06 /* Resources/ratchet.wav in Resources */ = {isa = PBXBuildFile; fileRef = 0EFFF04E650B803863A6F50D /* Resources/ratchet.wav */; };
+		2036ECFED102A686AD0653E1 /* App/AudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 739FFFAAD5D5113920DC3666 /* App/AudioService.swift */; };
+		22DB527EEE87153570A09305 /* App/PlanningService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6166AB143B708B502183686B /* App/PlanningService.swift */; };
+		28C2EA04AB37B98E65778889 /* App/SessionActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED423BE64B552354789FC48 /* App/SessionActivity.swift */; };
+		3CDCD6E575C3CB455009FD2F /* App/HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CDC7DC5CF5B90AC076E5AE5 /* App/HomeView.swift */; };
+		3CE3FDBA92D356E00D26264D /* Resources/tickEven.wav in Resources */ = {isa = PBXBuildFile; fileRef = 1C9B42FC5D41EC428A30D833 /* Resources/tickEven.wav */; };
+		76EA112E7390AD84CD8A2BF0 /* Resources/PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 181C36CA8CABCB105849D7D4 /* Resources/PrivacyInfo.xcprivacy */; };
+		78560B48CD3B703558A24989 /* App/TomatoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5BD8139618DEFC3FBA1BC7F /* App/TomatoView.swift */; };
+		7C1C564A9CB654A7D287F6AD /* UITests/FocusTalkUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C416FADDCA71B0316AFE9655 /* UITests/FocusTalkUITests.swift */; };
+		7CCF9D9283711564C679BC6C /* App/SessionServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1931B84C7268579BB161C126 /* App/SessionServices.swift */; };
+		827F467AAC69562C810AC144 /* App/SessionActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED423BE64B552354789FC48 /* App/SessionActivity.swift */; };
+		B3E7C76E8A5CCF42D67790A5 /* Widget/FocusWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 154D1083E6664BAE71C4D547 /* Widget/FocusWidget.swift */; };
+		B49480CFBAC91DF97ACB924A /* Resources/bell.wav in Resources */ = {isa = PBXBuildFile; fileRef = 722D7B7EEB94933ED057D5D8 /* Resources/bell.wav */; };
+		B5F235D5B8CC63C82183E49E /* FocusTalkWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = F231F6FE549E641636571AA6 /* FocusTalkWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DC81FC5240112C006C266C89 /* App/SpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3018E4A31A303D1D4EE7A23F /* App/SpeechService.swift */; };
+		E93CE0C60C898F22D1CBDD37 /* Resources/tomato.png in Resources */ = {isa = PBXBuildFile; fileRef = 5F7F1E279F0DE5483D73BB49 /* Resources/tomato.png */; };
+		EA3848127FE7C7962E215A12 /* App/FocusStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A7D305072B7BD70A7EE5E1 /* App/FocusStore.swift */; };
+		EB3E585AD5B30D6C01DF5A84 /* Resources/Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CFEF8106816C9945F23BAA2E /* Resources/Assets.xcassets */; };
+		F39B84CDD8EEE0FCCFDA6288 /* App/FocusTalkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABA9934D734DF3CBDA7BB049 /* App/FocusTalkApp.swift */; };
+		F634F783820C3F974ECB503D /* Resources/tickOdd.wav in Resources */ = {isa = PBXBuildFile; fileRef = FC30481922BBD831C8D0FADB /* Resources/tickOdd.wav */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		7C3F7C2476CF2BD9AE55EACD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C13732C8E715C9BEE4FA51C9;
+			remoteInfo = FocusTalk;
+		};
+		D799BAE6088A90139B415FCC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 704A160D8849979DE00DDB64;
+			remoteInfo = FocusTalkWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		CFFF27C96089B93150F3553B /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B5F235D5B8CC63C82183E49E /* FocusTalkWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		0EFFF04E650B803863A6F50D /* Resources/ratchet.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/ratchet.wav; sourceTree = "<group>"; };
+		154D1083E6664BAE71C4D547 /* Widget/FocusWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Widget/FocusWidget.swift; sourceTree = "<group>"; };
+		181C36CA8CABCB105849D7D4 /* Resources/PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		1931B84C7268579BB161C126 /* App/SessionServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/SessionServices.swift; sourceTree = "<group>"; };
+		1C9B42FC5D41EC428A30D833 /* Resources/tickEven.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/tickEven.wav; sourceTree = "<group>"; };
+		1ED423BE64B552354789FC48 /* App/SessionActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/SessionActivity.swift; sourceTree = "<group>"; };
+		3018E4A31A303D1D4EE7A23F /* App/SpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/SpeechService.swift; sourceTree = "<group>"; };
+		543559CAAFABCB8D87944E91 /* Core/FocusModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/FocusModels.swift; sourceTree = "<group>"; };
+		5F7F1E279F0DE5483D73BB49 /* Resources/tomato.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Resources/tomato.png; sourceTree = "<group>"; };
+		6166AB143B708B502183686B /* App/PlanningService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/PlanningService.swift; sourceTree = "<group>"; };
+		722D7B7EEB94933ED057D5D8 /* Resources/bell.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/bell.wav; sourceTree = "<group>"; };
+		739FFFAAD5D5113920DC3666 /* App/AudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AudioService.swift; sourceTree = "<group>"; };
+		8BCD5BC4CDFDF0918087C782 /* FocusTalk.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = FocusTalk.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9CDC7DC5CF5B90AC076E5AE5 /* App/HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/HomeView.swift; sourceTree = "<group>"; };
+		A7C9FD69DA095A3BF0CB4587 /* FocusTalkUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = FocusTalkUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		ABA9934D734DF3CBDA7BB049 /* App/FocusTalkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/FocusTalkApp.swift; sourceTree = "<group>"; };
+		B9A7D305072B7BD70A7EE5E1 /* App/FocusStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/FocusStore.swift; sourceTree = "<group>"; };
+		C416FADDCA71B0316AFE9655 /* UITests/FocusTalkUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITests/FocusTalkUITests.swift; sourceTree = "<group>"; };
+		C5BD8139618DEFC3FBA1BC7F /* App/TomatoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/TomatoView.swift; sourceTree = "<group>"; };
+		CFEF8106816C9945F23BAA2E /* Resources/Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Resources/Assets.xcassets; sourceTree = "<group>"; };
+		F231F6FE549E641636571AA6 /* FocusTalkWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; path = FocusTalkWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FC30481922BBD831C8D0FADB /* Resources/tickOdd.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Resources/tickOdd.wav; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7561BFB015D8F536760CB671 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		B28B7AF69320201D1CF206EB = {
+			isa = PBXGroup;
+			children = (
+				C416FADDCA71B0316AFE9655 /* UITests/FocusTalkUITests.swift */,
+				739FFFAAD5D5113920DC3666 /* App/AudioService.swift */,
+				B9A7D305072B7BD70A7EE5E1 /* App/FocusStore.swift */,
+				ABA9934D734DF3CBDA7BB049 /* App/FocusTalkApp.swift */,
+				9CDC7DC5CF5B90AC076E5AE5 /* App/HomeView.swift */,
+				6166AB143B708B502183686B /* App/PlanningService.swift */,
+				1ED423BE64B552354789FC48 /* App/SessionActivity.swift */,
+				1931B84C7268579BB161C126 /* App/SessionServices.swift */,
+				3018E4A31A303D1D4EE7A23F /* App/SpeechService.swift */,
+				C5BD8139618DEFC3FBA1BC7F /* App/TomatoView.swift */,
+				543559CAAFABCB8D87944E91 /* Core/FocusModels.swift */,
+				154D1083E6664BAE71C4D547 /* Widget/FocusWidget.swift */,
+				CFEF8106816C9945F23BAA2E /* Resources/Assets.xcassets */,
+				181C36CA8CABCB105849D7D4 /* Resources/PrivacyInfo.xcprivacy */,
+				722D7B7EEB94933ED057D5D8 /* Resources/bell.wav */,
+				0EFFF04E650B803863A6F50D /* Resources/ratchet.wav */,
+				1C9B42FC5D41EC428A30D833 /* Resources/tickEven.wav */,
+				FC30481922BBD831C8D0FADB /* Resources/tickOdd.wav */,
+				5F7F1E279F0DE5483D73BB49 /* Resources/tomato.png */,
+				FBDC4F23F93125BBEEAE800C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		FBDC4F23F93125BBEEAE800C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8BCD5BC4CDFDF0918087C782 /* FocusTalk.app */,
+				F231F6FE549E641636571AA6 /* FocusTalkWidget.appex */,
+				A7C9FD69DA095A3BF0CB4587 /* FocusTalkUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5A84779F73F7B6419BDB1882 /* FocusTalkUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2C89FC06BA9452D155609FB8 /* Build configuration list for PBXNativeTarget "FocusTalkUITests" */;
+			buildPhases = (
+				3F0002D04A541FE103F80CF6 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E4F9B188C23E0E7478CAF56D /* PBXTargetDependency */,
+			);
+			name = FocusTalkUITests;
+			productName = FocusTalkUITests;
+			productReference = A7C9FD69DA095A3BF0CB4587 /* FocusTalkUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		704A160D8849979DE00DDB64 /* FocusTalkWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9ED0E5B5BC01E6B082EFBF74 /* Build configuration list for PBXNativeTarget "FocusTalkWidget" */;
+			buildPhases = (
+				2D81737A052BBAAD15A6D3C1 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FocusTalkWidget;
+			productName = FocusTalkWidget;
+			productReference = F231F6FE549E641636571AA6 /* FocusTalkWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		C13732C8E715C9BEE4FA51C9 /* FocusTalk */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F37922C48DA5978D02C9E50E /* Build configuration list for PBXNativeTarget "FocusTalk" */;
+			buildPhases = (
+				971ED9D05B25DB6C4D7680D4 /* Sources */,
+				7561BFB015D8F536760CB671 /* Frameworks */,
+				0189424A5A60FED329FA868E /* Resources */,
+				CFFF27C96089B93150F3553B /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DE58E2B17C19600779694943 /* PBXTargetDependency */,
+			);
+			name = FocusTalk;
+			productName = FocusTalk;
+			productReference = 8BCD5BC4CDFDF0918087C782 /* FocusTalk.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		98F54143AB4E86B28C3AFEE0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 2700;
+			};
+			buildConfigurationList = 862894B703A6DEDF96A9DD6C /* Build configuration list for PBXProject "FocusTalk" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = B28B7AF69320201D1CF206EB;
+			productRefGroup = FBDC4F23F93125BBEEAE800C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C13732C8E715C9BEE4FA51C9 /* FocusTalk */,
+				704A160D8849979DE00DDB64 /* FocusTalkWidget */,
+				5A84779F73F7B6419BDB1882 /* FocusTalkUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0189424A5A60FED329FA868E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EB3E585AD5B30D6C01DF5A84 /* Resources/Assets.xcassets in Resources */,
+				76EA112E7390AD84CD8A2BF0 /* Resources/PrivacyInfo.xcprivacy in Resources */,
+				B49480CFBAC91DF97ACB924A /* Resources/bell.wav in Resources */,
+				12777128847F5891217CCD06 /* Resources/ratchet.wav in Resources */,
+				3CE3FDBA92D356E00D26264D /* Resources/tickEven.wav in Resources */,
+				F634F783820C3F974ECB503D /* Resources/tickOdd.wav in Resources */,
+				E93CE0C60C898F22D1CBDD37 /* Resources/tomato.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		2D81737A052BBAAD15A6D3C1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				28C2EA04AB37B98E65778889 /* App/SessionActivity.swift in Sources */,
+				B3E7C76E8A5CCF42D67790A5 /* Widget/FocusWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3F0002D04A541FE103F80CF6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7C1C564A9CB654A7D287F6AD /* UITests/FocusTalkUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		971ED9D05B25DB6C4D7680D4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2036ECFED102A686AD0653E1 /* App/AudioService.swift in Sources */,
+				EA3848127FE7C7962E215A12 /* App/FocusStore.swift in Sources */,
+				F39B84CDD8EEE0FCCFDA6288 /* App/FocusTalkApp.swift in Sources */,
+				3CDCD6E575C3CB455009FD2F /* App/HomeView.swift in Sources */,
+				22DB527EEE87153570A09305 /* App/PlanningService.swift in Sources */,
+				827F467AAC69562C810AC144 /* App/SessionActivity.swift in Sources */,
+				7CCF9D9283711564C679BC6C /* App/SessionServices.swift in Sources */,
+				DC81FC5240112C006C266C89 /* App/SpeechService.swift in Sources */,
+				78560B48CD3B703558A24989 /* App/TomatoView.swift in Sources */,
+				0CE91FB4D3CCFB454A4F1BE1 /* Core/FocusModels.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DE58E2B17C19600779694943 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 704A160D8849979DE00DDB64 /* FocusTalkWidget */;
+			targetProxy = D799BAE6088A90139B415FCC /* PBXContainerItemProxy */;
+		};
+		E4F9B188C23E0E7478CAF56D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C13732C8E715C9BEE4FA51C9 /* FocusTalk */;
+			targetProxy = 7C3F7C2476CF2BD9AE55EACD /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		5A8C91857F674E16E2724F47 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = P3RW4ZXXPR;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ramkarnati.focustalk;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		89E1FD6268CC0F221A2BE178 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = P3RW4ZXXPR;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		8EEBAB68363C2B0DAE00DB30 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = P3RW4ZXXPR;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Widget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ramkarnati.focustalk.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		94C1D7A82E2F92E70C5BA5D8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = P3RW4ZXXPR;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ramkarnati.focustalk.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = FocusTalk;
+			};
+			name = Debug;
+		};
+		9609A256A79253DD705A918E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = P3RW4ZXXPR;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ramkarnati.focustalk.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = FocusTalk;
+			};
+			name = Release;
+		};
+		9B3B545F8CBA1ACB550689D3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = P3RW4ZXXPR;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Widget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ramkarnati.focustalk.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		E6DE6C99132752C914FEF632 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = P3RW4ZXXPR;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		E9B2E96ABC5F6856F2BE79CF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = P3RW4ZXXPR;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ramkarnati.focustalk;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2C89FC06BA9452D155609FB8 /* Build configuration list for PBXNativeTarget "FocusTalkUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				94C1D7A82E2F92E70C5BA5D8 /* Debug */,
+				9609A256A79253DD705A918E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		862894B703A6DEDF96A9DD6C /* Build configuration list for PBXProject "FocusTalk" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				89E1FD6268CC0F221A2BE178 /* Debug */,
+				E6DE6C99132752C914FEF632 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9ED0E5B5BC01E6B082EFBF74 /* Build configuration list for PBXNativeTarget "FocusTalkWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8EEBAB68363C2B0DAE00DB30 /* Debug */,
+				9B3B545F8CBA1ACB550689D3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F37922C48DA5978D02C9E50E /* Build configuration list for PBXNativeTarget "FocusTalk" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E9B2E96ABC5F6856F2BE79CF /* Debug */,
+				5A8C91857F674E16E2724F47 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+}
