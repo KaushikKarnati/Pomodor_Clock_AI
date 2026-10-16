@@ -26,6 +26,8 @@ struct TimerObjectView: View {
     @State private var displayed = 0.0
     @State private var target = 0.0
     @State private var winding: Task<Void, Never>?
+    /// The wind animation in flight, so a drag that interrupts it starts from what is on screen.
+    @State private var windCurve: (from: Double, to: Double, start: Date, duration: Double)?
     @State private var rattleOffset: CGFloat = 0
 
     private var info: TimerObjectInfo { TimerObjectInfo.info(object) }
@@ -103,9 +105,15 @@ struct TimerObjectView: View {
                         if dragStart == nil {
                             winding?.cancel()
                             winding = nil
-                            dragStart = displayed
+                            var start = displayed
+                            if let curve = windCurve, Date.now.timeIntervalSince(curve.start) < curve.duration {
+                                start = Self.windValue(from: curve.from, to: curve.to,
+                                                       elapsed: Date.now.timeIntervalSince(curve.start), duration: curve.duration)
+                            }
+                            windCurve = nil
+                            dragStart = start
                             dragBlockID = blockID
-                            lastNotch = Int(displayed.rounded())
+                            lastNotch = Int(start.rounded())
                         }
                         let next = min(60, max(0, (dragStart ?? 0) - value.translation.width / pixelsPerMinute(side: side)))
                         dragValue = next
@@ -118,16 +126,19 @@ struct TimerObjectView: View {
                     }
                     .onEnded { _ in
                         guard let value = dragValue else { return }
-                        let snapped = value.rounded()
-                        let startedAt = (dragStart ?? displayed).rounded()
+                        let start = dragStart ?? displayed
                         let startBlock = dragBlockID
                         dragStart = nil
                         lastNotch = nil
                         dragBlockID = nil
-                        // A nudge that lands back on the starting minute changes nothing: it must not
-                        // round 24:37 up to 25:00 or skip a block with seconds left.
-                        guard snapped != startedAt else {
-                            withAnimation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.9)) { dragValue = nil }
+                        // A nudge changes nothing: it must not round 24:37 up to 25:00 or skip a block
+                        // with seconds left. Spring back to the live time, which kept running meanwhile.
+                        guard let snapped = Self.dragResult(start: start, end: value) else {
+                            withAnimation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.9)) {
+                                dragValue = nil
+                                displayed = minutes
+                                target = minutes
+                            }
                             return
                         }
                         dragValue = nil
@@ -212,6 +223,7 @@ struct TimerObjectView: View {
             return
         }
         if gap <= 0.75 {
+            windCurve = nil
             withAnimation(.linear(duration: min(1, gap * 60))) {
                 displayed = target
             }
@@ -219,6 +231,7 @@ struct TimerObjectView: View {
         }
         let from = displayed, destination = target
         let duration = min(1.25, 0.3 + gap * 0.025)
+        windCurve = (from, destination, .now, duration)
         withAnimation(.timingCurve(0.16, 1, 0.3, 1, duration: duration)) {
             displayed = destination
         }
@@ -237,6 +250,27 @@ struct TimerObjectView: View {
 
     /// When the eased wind crosses each whole minute. The curve (0.16, 1, 0.3, 1) has y(s) = 1 - (1 - s)^3,
     /// so the parameter for progress p is s = 1 - (1 - p)^(1/3); x(s) gives the time fraction.
+    /// The minutes a drag from `start` to `end` sets, or nil for a nudge: under half a minute of
+    /// travel, or landing back on the starting minute.
+    static func dragResult(start: Double, end: Double) -> Double? {
+        let snapped = end.rounded()
+        guard abs(end - start) >= 0.5, snapped != start.rounded() else { return nil }
+        return snapped
+    }
+
+    /// The value on screen `elapsed` seconds into a wind: the inverse of the curve `windClickTimes` uses.
+    static func windValue(from: Double, to destination: Double, elapsed: Double, duration: Double) -> Double {
+        let t = min(1, max(0, elapsed / duration))
+        var low = 0.0, high = 1.0
+        for _ in 0..<24 {
+            let s = (low + high) / 2
+            let x = 3 * (1 - s) * (1 - s) * s * 0.16 + 3 * (1 - s) * s * s * 0.3 + s * s * s
+            if x < t { low = s } else { high = s }
+        }
+        let s = (low + high) / 2
+        return from + (destination - from) * (1 - pow(1 - s, 3))
+    }
+
     static func windClickTimes(from: Double, to destination: Double, duration: Double) -> [Double] {
         guard abs(destination - from) > 0.001 else { return [] }
         let minutes: [Int]
@@ -356,6 +390,7 @@ private struct HourglassArtwork: View, Animatable {
 
     private static let sandTop = 150.0
     private static let neck = 326.0
+    private static let pileTip = 486.0
     private static let pileBottom = 570.0
     private static let pileCenterX = 341.5
 
@@ -366,6 +401,9 @@ private struct HourglassArtwork: View, Animatable {
             // The upper bulb narrows toward the neck, so its surface falls slowly at first.
             let surface = Self.neck - (Self.neck - Self.sandTop) * pow(clamped, 0.45)
             let poured = 1 - clamped
+            let pileScaleY = 0.25 + 1.45 * poured.squareRoot()
+            // The stream art runs to the bulb floor; end it just inside the scaled pile's tip.
+            let streamEnd = Self.pileBottom - (Self.pileBottom - Self.pileTip) * pileScaleY + 4
             ZStack {
                 Image("hourglass-base").resizable()
                 Image("hourglass-sand-top").resizable()
@@ -376,10 +414,16 @@ private struct HourglassArtwork: View, Animatable {
                         }
                     }
                 Image("hourglass-pile").resizable()
-                    .scaleEffect(x: 0.62 + 0.5 * pow(poured, 0.34), y: 0.25 + 1.45 * poured.squareRoot(),
+                    .scaleEffect(x: 0.62 + 0.5 * pow(poured, 0.34), y: pileScaleY,
                                  anchor: UnitPoint(x: Self.pileCenterX / 680, y: Self.pileBottom / 680))
                     .mask { Image("hourglass-bottom-mask").resizable() }
                 Image("hourglass-stream").resizable()
+                    .mask {
+                        VStack(spacing: 0) {
+                            Color.black.frame(height: streamEnd * unit)
+                            Color.clear
+                        }
+                    }
                     .opacity(flowing && clamped > 0.001 ? 1 : 0)
                     .animation(.easeInOut(duration: 0.25), value: flowing)
             }

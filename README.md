@@ -16,7 +16,7 @@ Ram Karnati’s development team is configured for both targets. The app was ins
 - Original source-derived bell, alternating ticks, ratchet, and mechanical haptics. Settings control spoken replies, haptics, and automatic progression; the spoken-reply preference survives relaunch.
 - Six selectable timer objects: tomato, apple, lemon, chrome egg (twist timers with a rotating minute band), hourglass (sand drains from layered artwork) and twin-bell alarm clock (a 60-minute wedge on its face). Choosing an object also picks its matching sounds.
 - Separate Winding, Ticking (including None) and Alarm sound menus with preview. The chosen alarm is also the notification sound. All sounds are procedurally rendered (`Tools/sound_packs`).
-- The Live Activity shows a miniature of the selected object inside a progress ring, plus the block name and focus/break state.
+- The Live Activity shows a miniature of the selected object inside a progress ring. With automatic progression (the default) it counts down the whole session and shows its end time, because the app can't update block details while suspended; with manual progression, or while paused, it shows the block name, and FOCUS/BREAK in manual mode.
 - Persisted timer deadlines, local notifications, and ActivityKit Lock Screen / Dynamic Island presentation.
 
 ## Tests

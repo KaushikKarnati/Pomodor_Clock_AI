@@ -2,9 +2,10 @@
 
 Usage: python3 prep_objects.py Tools/objects/source Resources/tomato.png <work dir>
 Writes <name>-680.png and geometry.json (band numbers copied into Core/TimerTheme.swift)."""
-import sys, json, math
+import sys, json, math, os
 from PIL import Image
 IMG, TOMATO, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
+os.makedirs(OUT, exist_ok=True)
 SRC = {'tomato': TOMATO, **{k: f'{IMG}/{k}.webp' for k in ['apple', 'egg', 'lemon', 'hourglass', 'alarmClock']}}
 TWIST = ['tomato', 'apple', 'egg', 'lemon']
 FRAME = 680

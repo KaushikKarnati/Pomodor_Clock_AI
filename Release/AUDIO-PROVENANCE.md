@@ -24,7 +24,7 @@ Winding, ticking and alarm sounds are chosen separately in Settings. Classic kee
 
 | Role | Options | Finishing applied |
 |---|---|---|
-| Winding | Felt, Wooden, Chrome spring, Sand pour, Mainspring, Brass, Deep wood | Sand pour and Brass trimmed to 60 ms so fast dial turns stay crisp |
+| Winding | Felt, Wooden, Chrome spring, Sand pour, Mainspring, Brass, Deep wood | All cut at their -40 dB tail (3 ms fade) so each click ends with its notch; Sand pour and Brass are also capped at 60 ms. Resulting lengths: Felt 8 ms, Wooden 25 ms, Chrome 27 ms, Deep 31 ms, Mainspring 41 ms, Brass 42 ms, Sand 59 ms |
 | Ticking | None, Felt, Woodblock, Chrome egg, Sand patter, Twin-bell clock, Grandfather, Brass | Felt low-passed at 1.8 kHz (level preserved) so it sounds muffled |
 | Alarm | Marimba, Temple blocks, Egg timer bell, Glass chime, Twin bells, Gong, Handbell, Singing bowl | Gong trimmed to 4.5 s and bowl to 5 s with 1.2 s fades; Marimba +5 dB to sit near the others |
 

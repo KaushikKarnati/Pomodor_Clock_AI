@@ -32,10 +32,8 @@ extension FocusAudioPlaying {
     init() {
         interruptionObserver = NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] notification in
             let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
-            // A `.began` for an app that was suspended is never followed by `.ended`; treating it as a
-            // live interruption would mute every tick, click and bell until relaunch.
-            let reason = notification.userInfo?[AVAudioSessionInterruptionReasonKey] as? UInt
-            if reason == AVAudioSession.InterruptionReason.appWasSuspended.rawValue { return }
+            // A `.began` that is never followed by `.ended` (the app was suspended mid-interruption) is
+            // cleared by resumeAfterForeground() when the app comes back.
             Task { @MainActor in
                 guard let self else { return }
                 self.interrupted = raw == AVAudioSession.InterruptionType.began.rawValue

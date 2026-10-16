@@ -7,7 +7,9 @@ try:
 except Exception:
     font = ImageFont.load_default()
 def draw_band(im, band, minutes):
-    """Python port of DialMarkings.body (TomatoView.swift) with a BandGeometry."""
+    """Approximation of DialMarkings.body (TomatoView.swift) for checking band placement. Numerals
+    are drawn at a fixed size: the app also scales them by band.scale and foreshortens them toward
+    the band's sides, so judge numeral legibility in the app, not here."""
     cx, cy, rx, ry, k = band['cx'], band['cy'], band['rx'], band['ry'], band['scale']
     INKC = (255, 255, 255) if band.get('ink') != 'dark' else (38, 34, 30)
     layer = Image.new('RGBA', im.size, (0, 0, 0, 0)); d = ImageDraw.Draw(layer)

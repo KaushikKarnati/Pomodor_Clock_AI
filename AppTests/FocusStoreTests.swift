@@ -350,6 +350,30 @@ final class RatchetPlaybackTests: XCTestCase {
     }
 }
 
+final class TimerDialTests: XCTestCase {
+    func testSmallNudgesDoNotChangeTheTimer() {
+        // 0:35 left: a few points of travel must not skip the block.
+        XCTAssertNil(TimerObjectView.dragResult(start: 35.0 / 60, end: 0.23))
+        // 24:40 left: a nudge that crosses the half minute must not shave off 40 seconds.
+        XCTAssertNil(TimerObjectView.dragResult(start: 24 + 40.0 / 60, end: 24.31))
+        // Landing back on the starting minute changes nothing either.
+        XCTAssertNil(TimerObjectView.dragResult(start: 24.4, end: 23.6))
+        XCTAssertEqual(TimerObjectView.dragResult(start: 24 + 40.0 / 60, end: 24.1), 24)
+        XCTAssertEqual(TimerObjectView.dragResult(start: 10, end: 17.4), 17)
+    }
+
+    func testWindValueFollowsTheWindCurve() {
+        XCTAssertEqual(TimerObjectView.windValue(from: 5, to: 25, elapsed: 0, duration: 1), 5, accuracy: 0.001)
+        XCTAssertEqual(TimerObjectView.windValue(from: 5, to: 25, elapsed: 1, duration: 1), 25, accuracy: 0.001)
+        // Each click is played when the on-screen value crosses its minute.
+        let clicks = TimerObjectView.windClickTimes(from: 5, to: 25, duration: 0.8)
+        XCTAssertEqual(clicks.count, 20)
+        for (offset, time) in clicks.enumerated() {
+            XCTAssertEqual(TimerObjectView.windValue(from: 5, to: 25, elapsed: time, duration: 0.8), Double(6 + offset), accuracy: 0.01)
+        }
+    }
+}
+
 private final class TestAudioClip: AudioClipPlaying {
     var isPlaying = false
     var currentTime: TimeInterval = 0

@@ -84,6 +84,8 @@ extension SessionServing {
     private var syncTask: Task<Void, Never>?
     private var alarmFile = "bell"
     private var objectMini = "mini-tomato"
+    /// Sessions this run has shown a Live Activity for. If that card is gone, the person swiped it away.
+    private var activitySessions: Set<String> = []
     override init() { super.init(); UNUserNotificationCenter.current().delegate = self }
     /// The app rings its own bell while in the foreground, including when merely inactive (Control Center,
     /// a call banner). When inactive, also show the banner in case the in-app tick raced the trigger.
@@ -140,18 +142,22 @@ extension SessionServing {
         let displayEnd = auto ? finalEnd : end
         let displayRemaining = session.secondsLeft(at: .now) + (auto ? session.plan.blocks.dropFirst(session.index + 1).reduce(0) { $0 + $1.seconds } : 0)
         let duration = auto ? Double(session.plan.totalMinutes * 60) : block.seconds
-        let content = ActivityContent(state: SessionActivityAttributes.ContentState(start: displayEnd.addingTimeInterval(-duration), title: block.title, end: displayEnd, sessionEnd: finalEnd, isRunning: session.status == .running, remaining: displayRemaining, position: "\(session.index + 1) of \(session.plan.blocks.count)", objectMini: mini, isBreak: block.isBreak, auto: auto), staleDate: session.status == .running ? displayEnd : nil)
+        let content = ActivityContent(state: SessionActivityAttributes.ContentState(start: displayEnd.addingTimeInterval(-duration), title: block.title, end: displayEnd, sessionEnd: finalEnd, isRunning: session.status == .running, remaining: displayRemaining, position: "\(session.index + 1) of \(session.plan.blocks.count)", objectMini: mini, isBreak: block.isBreak, auto: auto, isLastBlock: session.index == session.plan.blocks.count - 1), staleDate: session.status == .running ? displayEnd : nil)
         for activity in Activity<SessionActivityAttributes>.activities where activity.attributes.sessionID != session.id.uuidString {
             await activity.end(nil, dismissalPolicy: .immediate)
         }
         guard !Task.isCancelled else { return }
-        // The system ends activities on its own (8-hour limit, user dismissal). Updating an ended one does
-        // nothing, so replace it instead of keeping a frozen card for the rest of the session.
-        let mine = Activity<SessionActivityAttributes>.activities.filter { $0.attributes.sessionID == session.id.uuidString }
+        // The system can end an activity on its own (8-hour limit). Updating an ended one does nothing, so
+        // replace it instead of keeping a frozen card. A card the person swiped away stays away.
+        let id = session.id.uuidString
+        let mine = Activity<SessionActivityAttributes>.activities.filter { $0.attributes.sessionID == id }
+        let dismissed = mine.contains { $0.activityState == .dismissed } || (mine.isEmpty && activitySessions.contains(id))
         if let existing = mine.first(where: { $0.activityState == .active || $0.activityState == .stale }) { await existing.update(content) }
-        else if ActivityAuthorizationInfo().areActivitiesEnabled {
+        else if !dismissed, ActivityAuthorizationInfo().areActivitiesEnabled {
             for ended in mine { await ended.end(nil, dismissalPolicy: .immediate) }
-            _ = try? Activity.request(attributes: SessionActivityAttributes(sessionID: session.id.uuidString), content: content, pushType: nil)
+            if (try? Activity.request(attributes: SessionActivityAttributes(sessionID: id), content: content, pushType: nil)) != nil {
+                activitySessions.insert(id)
+            }
         }
     }
 }

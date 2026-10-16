@@ -13,9 +13,11 @@ private struct Presentation {
     var sessionLevel: Bool { state.auto == true }
     var isBreak: Bool { !sessionLevel && state.isBreak == true }
     var tint: Color { isStale ? .gray : (isBreak ? breakGreen : focusRed) }
+    /// Once stale, the whole session is over (not just a block that needs the app to continue).
+    var sessionDone: Bool { isStale && (sessionLevel || state.isLastBlock == true) }
 
     var kind: String {
-        if isStale { return sessionLevel ? "SESSION DONE" : "TIME’S UP" }
+        if isStale { return sessionDone ? "SESSION DONE" : "TIME’S UP" }
         if !state.isRunning { return "PAUSED" }
         if sessionLevel { return "FOCUS SESSION" }
         return isBreak ? "BREAK" : "FOCUS"
@@ -84,10 +86,12 @@ private struct BlockLabel: View {
                 .foregroundStyle(presentation.tint)
             Group {
                 if presentation.isStale {
-                    Text(presentation.sessionLevel ? "Nice work." : "Open FocusTalk for the next block")
-                } else if presentation.sessionLevel {
+                    Text(presentation.sessionDone ? "Nice work." : "Open FocusTalk for the next block")
+                } else if presentation.sessionLevel && state.isRunning {
                     Text("Ends \(Text(state.sessionEnd, style: .time))")
                 } else {
+                    // Manual progression, or paused: nothing advances, so the block name stays accurate.
+                    // (A paused session's end time would drift further into the past.)
                     Text(state.title)
                 }
             }
