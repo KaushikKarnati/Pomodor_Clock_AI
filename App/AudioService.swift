@@ -12,15 +12,17 @@ import UIKit
     func preview(_ option: SoundOption)
     /// Clears a stale interruption: iOS does not promise an `.ended` for every `.began`.
     func resumeAfterForeground()
-    /// Back to active without having been backgrounded: clears a stale interruption only if the audio
-    /// session can be reactivated, so a call that is still going on keeps the app quiet.
+    /// The same when coming back to active without having been backgrounded (Control Center, a banner).
     func resumeAfterInactive()
+    /// Audio is interrupted (a call, Siri, an alarm), so automatic announcements should stay quiet too.
+    var isInterrupted: Bool { get }
 }
 extension FocusAudioPlaying {
     func configure(_ selection: SoundSelection) {}
     func preview(_ option: SoundOption) {}
     func resumeAfterForeground() {}
     func resumeAfterInactive() {}
+    var isInterrupted: Bool { false }
 }
 @MainActor final class AudioService: FocusAudioPlaying {
     private let sounds = SoundPlayers()
@@ -94,17 +96,21 @@ extension FocusAudioPlaying {
         AudioSessionCoordinator.shared.perform { sounds.stop() }
     }
 
+    var isInterrupted: Bool { interrupted }
+
+    /// Another app's non-mixable audio is playing, such as a phone call that is still going on. Our
+    /// mixable session could still play over it, so a `.began` without its `.ended` is not stale yet.
+    private var otherAudioHoldsTheSession: Bool { AVAudioSession.sharedInstance().secondaryAudioShouldBeSilencedHint }
+
     func resumeAfterForeground() {
-        interrupted = false
+        if !otherAudioHoldsTheSession { interrupted = false }
         ambient()
     }
 
     func resumeAfterInactive() {
-        guard interrupted else { return }
-        AudioSessionCoordinator.shared.prepareAmbient { [weak self] activated in
-            guard activated else { return }
-            Task { @MainActor in self?.interrupted = false }
-        }
+        guard interrupted, !otherAudioHoldsTheSession else { return }
+        interrupted = false
+        ambient()
     }
 
     func configure(_ selection: SoundSelection) {
@@ -263,17 +269,13 @@ final class AudioSessionCoordinator: @unchecked Sendable {
         work.enqueue { done in operation(); done() }
     }
 
-    /// `completion` reports whether the session is now active (it can't be during a phone call).
-    func prepareAmbient(completion: (@Sendable (Bool) -> Void)? = nil) {
+    func prepareAmbient() {
         work.enqueue { [self] done in
-            guard !recording else { completion?(false); done(); return }
+            guard !recording else { done(); return }
             let session = AVAudioSession.sharedInstance()
             do { try session.setCategory(.ambient, mode: .default) }
-            catch { completion?(false); done(); return }
-            activate(session) { result in
-                if case .success = result { completion?(true) } else { completion?(false) }
-                done()
-            }
+            catch { done(); return }
+            activate(session) { _ in done() }
         }
     }
 

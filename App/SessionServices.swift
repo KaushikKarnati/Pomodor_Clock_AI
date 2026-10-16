@@ -102,12 +102,18 @@ extension SessionServing {
         }
     }
     private var enablementTask: Task<Void, Never>?
+    private var lastSync: (session: FocusSession?, auto: Bool)?
     override init() {
         super.init()
         UNUserNotificationCenter.current().delegate = self
         // Turning Live Activities off and on removes the card; that isn't the person swiping it away.
+        // When they come back on, show the card again straight away.
         enablementTask = Task { [weak self] in
-            for await _ in ActivityAuthorizationInfo().activityEnablementUpdates { self?.shownCard = nil }
+            for await enabled in ActivityAuthorizationInfo().activityEnablementUpdates {
+                guard let self else { return }
+                self.shownCard = nil
+                if enabled, let last = self.lastSync { self.sync(session: last.session, auto: last.auto) }
+            }
         }
     }
     /// The app rings its own bell while in the foreground, including when merely inactive (Control Center,
@@ -126,6 +132,7 @@ extension SessionServing {
         self.objectMini = objectMini
     }
     func sync(session: FocusSession?, auto: Bool) {
+        lastSync = (session, auto)
         syncTask?.cancel()
         let alarmSound = UNNotificationSound(named: .init(rawValue: "\(alarmFile).wav"))
         let mini = objectMini

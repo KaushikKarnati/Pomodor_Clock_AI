@@ -170,12 +170,12 @@ import AVFoundation
             if let s = session {
                 if s.status == .finished {
                     toast("Session done")
-                    if settings.voice && isForeground && !isListening {
+                    if settings.voice && isForeground && !isListening && !audio.isInterrupted {
                         voice.speak("That’s the whole session. Nice work.")
                     }
                 } else if let next = s.current {
                     toast("Now: \(next.title)")
-                    if settings.voice && isForeground && !isListening {
+                    if settings.voice && isForeground && !isListening && !audio.isInterrupted {
                         let lead = (prevBlock?.isBreak == true) ? "Break’s over." : "Time’s up."
                         let line: String
                         if next.isBreak {

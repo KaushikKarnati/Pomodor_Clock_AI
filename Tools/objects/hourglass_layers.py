@@ -79,7 +79,7 @@ for y in range(PILE_CONE, PILE[1] + 1):
         p = L['pile'][x, y]
         if x not in keep or (y < PILE_CONE + 6 and p[0] - p[2] < 20): L['pile'][x, y] = (0, 0, 0, 0)
         elif y < PILE_CONE + 16:
-            edge = min(1, max(0, ((y - PILE_CONE) + 4 - abs(x - BULB_X) / 3) / 4))
+            edge = min(1, max(0, (y - PILE_CONE) + 2.5 - abs(x - BULB_X) / 3))
             L['pile'][x, y] = p[:3] + (int(p[3] * edge),)
 # Below the neck, specks along the post's edges were caught as stream; keep only the falling column.
 for y in range(334, PILE[1] + 1):
@@ -129,11 +129,13 @@ holes = lifted['sandTop'] | lifted['pile'] | lifted['stream']
 glass = img.copy()
 post = np.asarray(src).astype(float)[128:147, POST_X[0]:POST_X[1] + 1].mean(axis=0)
 img[POST_Y[0]:POST_Y[1], POST_X[0]:POST_X[1] + 1] = post
-# In the neck the glass walls are in front of the post: lay them back over it.
-for y in range(POST_Y[0], NECK_Y + 9):
+# In the neck the glass walls are in front of the post: lay them back over it, fading out below.
+FADE = (NECK_Y - 4, NECK_Y + 12)
+for y in range(POST_Y[0], FADE[1]):
+    k = min(1, max(0, (FADE[1] - y) / (FADE[1] - FADE[0])))
     for x in range(POST_X[0], POST_X[1] + 1):
         if not holes[y, x]:
-            a = glass[y, x, 3] / 255
+            a = glass[y, x, 3] / 255 * k
             img[y, x, :3] = glass[y, x, :3] * a + img[y, x, :3] * (1 - a); img[y, x, 3] = 255
 in_post = (cols >= POST_X[0]) & (cols <= POST_X[1]) & (rows >= POST_Y[0]) & (rows < POST_Y[1])
 img = diffuse(img, lifted['stream'] & ~in_post, {FROM_BELOW, FROM_LEFT, FROM_RIGHT})
@@ -147,10 +149,11 @@ img = diffuse(img, hole & ~floor, {FROM_ABOVE, FROM_BELOW, FROM_LEFT, FROM_RIGHT
 smooth = img.copy()   # soften the change of gradient where the two fills meet
 for y in range(532, 549):
     img[y, hole[y]] = smooth[y - 4:y + 5][:, hole[y]].mean(axis=0)
-# Pile pixels on the bulb's rim (outside the mask the app clips the pile with) are glass highlights
-# the colour test caught: convert them like the rest of the glass.
+# Pile pixels on the bulb's rim (outside the mask the app clips the pile with) are glass and wood the
+# colour test caught: treat them as the main pass would have (neutral glass converted, the rest kept).
 for y, x in zip(*np.nonzero(lifted['pile'] & ~in_bulb & ~in_post)):
-    img[y, x] = (255, 255, 255, int(max(0, min(210, (252 - lum(P[x, y])) * 1.9)) + 12))
+    p = P[x, y]
+    img[y, x] = (255, 255, 255, int(max(0, min(210, (252 - lum(p)) * 1.9)) + 12)) if neutral(p) else p
 for y, x in zip(*np.nonzero(lifted['sandTop'])):
     img[y, x] = post[x - POST_X[0]] if POST_X[0] <= x <= POST_X[1] else img[2 * NECK_Y - y, x]
 # Blend each column from the last untouched row above the sand into the repaint, so the textured
