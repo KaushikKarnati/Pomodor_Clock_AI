@@ -12,11 +12,15 @@ import UIKit
     func preview(_ option: SoundOption)
     /// Clears a stale interruption: iOS does not promise an `.ended` for every `.began`.
     func resumeAfterForeground()
+    /// Back to active without having been backgrounded: clears a stale interruption only if the audio
+    /// session can be reactivated, so a call that is still going on keeps the app quiet.
+    func resumeAfterInactive()
 }
 extension FocusAudioPlaying {
     func configure(_ selection: SoundSelection) {}
     func preview(_ option: SoundOption) {}
     func resumeAfterForeground() {}
+    func resumeAfterInactive() {}
 }
 @MainActor final class AudioService: FocusAudioPlaying {
     private let sounds = SoundPlayers()
@@ -93,6 +97,14 @@ extension FocusAudioPlaying {
     func resumeAfterForeground() {
         interrupted = false
         ambient()
+    }
+
+    func resumeAfterInactive() {
+        guard interrupted else { return }
+        AudioSessionCoordinator.shared.prepareAmbient { [weak self] activated in
+            guard activated else { return }
+            Task { @MainActor in self?.interrupted = false }
+        }
     }
 
     func configure(_ selection: SoundSelection) {
@@ -251,13 +263,17 @@ final class AudioSessionCoordinator: @unchecked Sendable {
         work.enqueue { done in operation(); done() }
     }
 
-    func prepareAmbient() {
+    /// `completion` reports whether the session is now active (it can't be during a phone call).
+    func prepareAmbient(completion: (@Sendable (Bool) -> Void)? = nil) {
         work.enqueue { [self] done in
-            guard !recording else { done(); return }
+            guard !recording else { completion?(false); done(); return }
             let session = AVAudioSession.sharedInstance()
             do { try session.setCategory(.ambient, mode: .default) }
-            catch { done(); return }
-            activate(session) { _ in done() }
+            catch { completion?(false); done(); return }
+            activate(session) { result in
+                if case .success = result { completion?(true) } else { completion?(false) }
+                done()
+            }
         }
     }
 

@@ -217,8 +217,8 @@ import AVFoundation
     }
 
     /// Back to active without having been backgrounded (Control Center, a call banner): no resync,
-    /// but clear an audio interruption whose end iOS never reported.
-    func resumeAudio() { audio.resumeAfterForeground() }
+    /// but clear an audio interruption whose end iOS never reported, unless it is still going on.
+    func resumeAudio() { audio.resumeAfterInactive() }
 
     func setListening(_ value: Bool) {
         isListening = value

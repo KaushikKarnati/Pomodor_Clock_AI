@@ -101,7 +101,15 @@ extension SessionServing {
             defaults.set(newValue?.since.timeIntervalSince1970, forKey: "liveActivity.since")
         }
     }
-    override init() { super.init(); UNUserNotificationCenter.current().delegate = self }
+    private var enablementTask: Task<Void, Never>?
+    override init() {
+        super.init()
+        UNUserNotificationCenter.current().delegate = self
+        // Turning Live Activities off and on removes the card; that isn't the person swiping it away.
+        enablementTask = Task { [weak self] in
+            for await _ in ActivityAuthorizationInfo().activityEnablementUpdates { self?.shownCard = nil }
+        }
+    }
     /// The app rings its own bell while in the foreground, including when merely inactive (Control Center,
     /// a call banner). When inactive, also show the banner in case the in-app tick raced the trigger.
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
@@ -171,13 +179,15 @@ extension SessionServing {
             await existing.update(content)
             // The card carries on to the next block; a swipe from now on applies to this block.
             if let card = shownCard, card.session == id { shownCard = (id, scope, card.since) } else { shownCard = (id, scope, .now) }
+        } else if !ActivityAuthorizationInfo().areActivitiesEnabled {
+            shownCard = nil   // Live Activities are off; whatever removed the card, it wasn't a swipe.
         } else {
             // Gone while still covering what it was shown for, before the system's 8-hour limit: the
             // person swiped it away, so leave it. Anything else (a cleared TIME'S UP card in manual mode,
             // a card the system ended, a failed request) gets a fresh card.
             let swipedAway = mine.allSatisfy { $0.activityState == .dismissed }
                 && shownCard.map { $0.session == id && $0.scope == scope && Date.now.timeIntervalSince($0.since) < 8 * 3600 } == true
-            if !swipedAway, ActivityAuthorizationInfo().areActivitiesEnabled {
+            if !swipedAway {
                 for ended in mine { await ended.end(nil, dismissalPolicy: .immediate) }
                 shownCard = nil
                 if (try? Activity.request(attributes: SessionActivityAttributes(sessionID: id), content: content, pushType: nil)) != nil {

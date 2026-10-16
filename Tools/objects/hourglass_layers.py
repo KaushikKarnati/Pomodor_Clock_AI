@@ -9,7 +9,7 @@ def lum(p): return 0.299 * p[0] + 0.587 * p[1] + 0.114 * p[2]
 def gr(p): return p[1] / max(1, p[0])
 def sandy(p): return p[3] > 200 and gr(p) >= 0.80 and p[0] - p[2] > 10 and lum(p) > 100
 def neutral(p): return abs(p[0] - p[2]) < 18 and abs(p[0] - p[1]) < 14 and lum(p) > 135
-TOP = (150, 325); PILE = (486, 569); PILE_CONE = 500; SX = (236, 446); STREAM = (326, 351, 318, 500); STREAM_TILE = (420, 480); POST = (322, 360)
+TOP = (150, 325); NECK_WALLS = 290; PILE = (486, 569); PILE_CONE = 500; SX = (236, 446); STREAM = (326, 351, 318, 500); STREAM_TILE = (420, 480); POST = (322, 360)
 GLASS_X = (230, 452); GLASS_Y = (92, 572); BULB_X = 341
 names = ['base', 'sandTop', 'pile', 'stream', 'bottomMask']
 layers = {k: Image.new('RGBA', (W, H), (0, 0, 0, 0)) for k in names}; L = {k: v.load() for k, v in layers.items()}
@@ -51,13 +51,36 @@ for y in range(330, 570):
     l, r = median([e[0] for e in near]), median([e[1] for e in near])
     l, r = max(l, 2 * BULB_X - r), min(r, 2 * BULB_X - l)   # the bulb is symmetric: keep the tighter side
     for x in range(l + 3, r - 2): L['bottomMask'][x, y] = (255, 255, 255, 255)
+def lift_top(x, y): L['sandTop'][x, y] = P[x, y]; L['base'][x, y] = HOLE; lifted['sandTop'][y, x] = True
 # Glass highlights cross the top sand; they aren't sand-coloured, so they'd stay behind as gaps in
-# the sand. Short gaps between sand pixels in a row drain with the sand.
-for y in range(TOP[0], TOP[1] + 1):
+# the sand. Short gaps between sand pixels in a row drain with the sand. Not near the neck: there
+# the gaps are the glass walls, which must stay in front of the post.
+for y in range(TOP[0], NECK_WALLS):
     xs = [x for x in range(SX[0], SX[1] + 1) if L['sandTop'][x, y][3]]
     for a, b in zip(xs, xs[1:]):
         if 1 < b - a <= 32:
-            for x in range(a + 1, b): L['sandTop'][x, y] = P[x, y]; L['base'][x, y] = HOLE; lifted['sandTop'][y, x] = True
+            for x in range(a + 1, b): lift_top(x, y)
+# The sand surface's darker rim, just above each column's first sand pixel, drains with it too.
+for x in range(SX[0], SX[1] + 1):
+    first = next((y for y in range(TOP[0], TOP[1] + 1) if lifted['sandTop'][y, x]), None)
+    if first is None: continue
+    for y in range(max(TOP[0], first - 2), first): lift_top(x, y)
+# Keep the pile one cone: drop runs cut off from the run under the stream (rim glass the colour test
+# caught) and grey collar specks at its top, then round off its flat top into an apex.
+for y in range(PILE_CONE, PILE[1] + 1):
+    xs = [x for x in range(SX[0], SX[1] + 1) if L['pile'][x, y][3]]
+    keep = set(); runs = []
+    for x in xs:
+        if runs and x - runs[-1][-1] <= 6: runs[-1].append(x)
+        else: runs.append([x])
+    for run in runs:
+        if run[0] - 6 <= BULB_X <= run[-1] + 6: keep.update(range(run[0], run[-1] + 1))
+    for x in xs:
+        p = L['pile'][x, y]
+        if x not in keep or (y < PILE_CONE + 6 and p[0] - p[2] < 20): L['pile'][x, y] = (0, 0, 0, 0)
+        elif y < PILE_CONE + 16:
+            edge = min(1, max(0, ((y - PILE_CONE) + 4 - abs(x - BULB_X) / 3) / 4))
+            L['pile'][x, y] = p[:3] + (int(p[3] * edge),)
 # Below the neck, specks along the post's edges were caught as stream; keep only the falling column.
 for y in range(334, PILE[1] + 1):
     for x in range(STREAM[0], STREAM[1] + 1):
@@ -79,8 +102,8 @@ print({k: v.getbbox() for k, v in layers.items()})
 #   while the clean pixels around the hole stay fixed, so no seams or stripes are left. Only some
 #   sides feed a hole: the stream takes from its sides and below (not the bright neck), the pile
 #   from the glass above and beside it (not the bright rim below, nor the post).
-# - Pile pixels on the bulb's rim (outside the mask the app clips the pile with) and the top sand:
-#   mirror the opposite bulb across the neck, then feather the top sand's upper edge.
+# - Pile pixels on the bulb's rim are converted like the rest of the glass. The top sand mirrors the
+#   bottom bulb across the neck, and its upper edge is feathered column by column.
 NECK_Y = 326; POST_X = (328, 354); POST_Y = (296, 570)
 FROM_ABOVE, FROM_BELOW, FROM_LEFT, FROM_RIGHT = (1, 0), (-1, 0), (0, 1), (0, -1)
 def diffuse(img, hole, sources, blocked=None, iterations=4000):
@@ -102,8 +125,16 @@ def grow(mask, px):
     return mask
 img = np.asarray(Image.open(f'{A}/hourglass-base.png').convert('RGBA')).astype(float)
 rows, cols = np.mgrid[0:H, 0:W]
+holes = lifted['sandTop'] | lifted['pile'] | lifted['stream']
+glass = img.copy()
 post = np.asarray(src).astype(float)[128:147, POST_X[0]:POST_X[1] + 1].mean(axis=0)
 img[POST_Y[0]:POST_Y[1], POST_X[0]:POST_X[1] + 1] = post
+# In the neck the glass walls are in front of the post: lay them back over it.
+for y in range(POST_Y[0], NECK_Y + 9):
+    for x in range(POST_X[0], POST_X[1] + 1):
+        if not holes[y, x]:
+            a = glass[y, x, 3] / 255
+            img[y, x, :3] = glass[y, x, :3] * a + img[y, x, :3] * (1 - a); img[y, x, 3] = 255
 in_post = (cols >= POST_X[0]) & (cols <= POST_X[1]) & (rows >= POST_Y[0]) & (rows < POST_Y[1])
 img = diffuse(img, lifted['stream'] & ~in_post, {FROM_BELOW, FROM_LEFT, FROM_RIGHT})
 # The pile's soft, lighter edge isn't sand-coloured enough to be lifted with it, so take a few pixels
@@ -113,14 +144,22 @@ collar = (cols > POST_X[1]) & (cols <= POST_X[1] + 4) & (rows >= 476) & (rows <=
 hole = (grow(lifted['pile'], 4) | collar) & in_bulb & ~in_post; floor = hole & (rows >= 540)
 img = diffuse(img, floor, {FROM_BELOW, FROM_LEFT, FROM_RIGHT}, blocked=in_post)   # the wooden base through the floor
 img = diffuse(img, hole & ~floor, {FROM_ABOVE, FROM_BELOW, FROM_LEFT, FROM_RIGHT}, blocked=in_post)
-for y, x in zip(*np.nonzero(lifted['pile'] & ~in_bulb & ~in_post)): img[y, x] = img[2 * NECK_Y - y, x]
+smooth = img.copy()   # soften the change of gradient where the two fills meet
+for y in range(532, 549):
+    img[y, hole[y]] = smooth[y - 4:y + 5][:, hole[y]].mean(axis=0)
+# Pile pixels on the bulb's rim (outside the mask the app clips the pile with) are glass highlights
+# the colour test caught: convert them like the rest of the glass.
+for y, x in zip(*np.nonzero(lifted['pile'] & ~in_bulb & ~in_post)):
+    img[y, x] = (255, 255, 255, int(max(0, min(210, (252 - lum(P[x, y])) * 1.9)) + 12))
 for y, x in zip(*np.nonzero(lifted['sandTop'])):
     img[y, x] = post[x - POST_X[0]] if POST_X[0] <= x <= POST_X[1] else img[2 * NECK_Y - y, x]
 # Blend each column from the last untouched row above the sand into the repaint, so the textured
 # post and the original glass don't end in a hard line where the sand used to start.
-F0, F1 = TOP[0] - 3, TOP[0] + 10
-feather = lifted['sandTop'][F1]
-for y in range(F0 + 1, F1):
-    t = (y - F0) / (F1 - F0)
-    img[y, feather] = (1 - t) * img[F0, feather] + t * img[F1, feather]
+for x in range(SX[0], SX[1] + 1):
+    lifted_rows = np.nonzero(lifted['sandTop'][:, x])[0]
+    if not len(lifted_rows): continue
+    f0, f1 = lifted_rows[0] - 3, lifted_rows[0] + 10
+    for y in range(f0 + 1, f1):
+        t = (y - f0) / (f1 - f0)
+        img[y, x] = (1 - t) * img[f0, x] + t * img[f1, x]
 Image.fromarray(np.clip(img.round(), 0, 255).astype(np.uint8), 'RGBA').save(f'{A}/hourglass-base.png')
