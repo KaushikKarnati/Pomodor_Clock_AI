@@ -12,8 +12,6 @@ import UIKit
     func preview(_ option: SoundOption)
     /// Clears a stale interruption: iOS does not promise an `.ended` for every `.began`.
     func resumeAfterForeground()
-    /// The same when coming back to active without having been backgrounded (Control Center, a banner).
-    func resumeAfterInactive()
     /// Audio is interrupted (a call, Siri, an alarm), so automatic announcements should stay quiet too.
     var isInterrupted: Bool { get }
 }
@@ -21,7 +19,6 @@ extension FocusAudioPlaying {
     func configure(_ selection: SoundSelection) {}
     func preview(_ option: SoundOption) {}
     func resumeAfterForeground() {}
-    func resumeAfterInactive() {}
     var isInterrupted: Bool { false }
 }
 @MainActor final class AudioService: FocusAudioPlaying {
@@ -98,17 +95,10 @@ extension FocusAudioPlaying {
 
     var isInterrupted: Bool { interrupted }
 
-    /// Another app's non-mixable audio is playing, such as a phone call that is still going on. Our
-    /// mixable session could still play over it, so a `.began` without its `.ended` is not stale yet.
-    private var otherAudioHoldsTheSession: Bool { AVAudioSession.sharedInstance().secondaryAudioShouldBeSilencedHint }
-
+    /// Coming back from the background. Without CallKit there is no reliable way to tell a call that is
+    /// still going on from a stale interruption (another app's music looks the same), and staying muted
+    /// would silence block ends, so clear it.
     func resumeAfterForeground() {
-        if !otherAudioHoldsTheSession { interrupted = false }
-        ambient()
-    }
-
-    func resumeAfterInactive() {
-        guard interrupted, !otherAudioHoldsTheSession else { return }
         interrupted = false
         ambient()
     }

@@ -170,12 +170,10 @@ import AVFoundation
             if let s = session {
                 if s.status == .finished {
                     toast("Session done")
-                    if settings.voice && isForeground && !isListening && !audio.isInterrupted {
-                        voice.speak("That’s the whole session. Nice work.")
-                    }
+                    if isForeground && !isListening { announce("That’s the whole session. Nice work.") }
                 } else if let next = s.current {
                     toast("Now: \(next.title)")
-                    if settings.voice && isForeground && !isListening && !audio.isInterrupted {
+                    if isForeground && !isListening {
                         let lead = (prevBlock?.isBreak == true) ? "Break’s over." : "Time’s up."
                         let line: String
                         if next.isBreak {
@@ -184,7 +182,7 @@ import AVFoundation
                             let goalPart = next.goal.isEmpty ? "" : " \(next.goal)."
                             line = "\(lead) Next: \(next.title).\(goalPart) \(next.minutes) minutes."
                         }
-                        voice.speak(line)
+                        announce(line)
                     }
                 }
             }
@@ -216,9 +214,12 @@ import AVFoundation
         updateTicker()
     }
 
-    /// Back to active without having been backgrounded (Control Center, a call banner): no resync,
-    /// but clear an audio interruption whose end iOS never reported, unless it is still going on.
-    func resumeAudio() { audio.resumeAfterInactive() }
+    /// Speaks a line the app volunteers (block changes, a plan that arrives later), unless spoken replies
+    /// are off or audio is interrupted, such as by a call.
+    private func announce(_ line: String) {
+        guard settings.voice, !audio.isInterrupted else { return }
+        voice.speak(line)
+    }
 
     func setListening(_ value: Bool) {
         isListening = value
@@ -285,8 +286,8 @@ import AVFoundation
                 busy = false
                 if let plan = result.plan, session?.isActive != true {
                     apply(plan, startImmediately: true)
-                } else if settings.voice, isForeground, !isListening, !result.reply.isEmpty {
-                    voice.speak(result.reply)
+                } else if isForeground, !isListening, !result.reply.isEmpty {
+                    announce(result.reply)
                 }
             } catch {
                 guard !Task.isCancelled else { return }
@@ -368,9 +369,9 @@ import AVFoundation
             cancelGeneration()
             if let first = valid.blocks.first {
                 toast("Now: \(first.title)")
-                if settings.voice && startImmediately && isForeground && !isListening {
+                if startImmediately && isForeground && !isListening {
                     let goalText = first.goal.isEmpty ? "" : " \(first.goal)."
-                    voice.speak(first.isBreak ? "Starting with break, \(first.minutes) minutes." : "First up: \(first.title).\(goalText) \(first.minutes) minutes.")
+                    announce(first.isBreak ? "Starting with break, \(first.minutes) minutes." : "First up: \(first.title).\(goalText) \(first.minutes) minutes.")
                 }
             }
             if startImmediately { startPause() } else { changed() }
