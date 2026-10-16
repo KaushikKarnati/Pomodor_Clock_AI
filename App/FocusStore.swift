@@ -76,7 +76,13 @@ import AVFoundation
 
     /// Current whole seconds on active block (for countdown readout)
     var displaySeconds: Int {
-        max(0, Int(remaining.rounded(.up)))
+        Self.wholeSeconds(remaining)
+    }
+
+    /// Whole seconds for display; bounded so a damaged value can never trap the Int conversion.
+    private static func wholeSeconds(_ value: Double) -> Int {
+        guard value.isFinite else { return 0 }
+        return Int(min(max(0, value), 24 * 3600).rounded(.up))
     }
 
     /// Remaining time for the entire session across all blocks
@@ -100,8 +106,16 @@ import AVFoundation
         do { saved = try disk.load() } catch { self.error = "Saved data could not be opened. It has been preserved. \(error.localizedDescription)"; persistenceBlocked = true }
         let autoAdvance = settings.auto
         _ = saved.session?.reconcile(at: .now, auto: autoAdvance)
+        applyAppearance()
         archiveFinished(); persist(); services.sync(session: session, auto: settings.auto)
         updateTicker()
+    }
+
+    /// Loads the chosen sounds and tells notifications/Live Activity which alarm and object to show.
+    private func applyAppearance() {
+        let selection = settings.soundSelection
+        audio.configure(selection)
+        services.setAppearance(alarmFile: selection.alarm, objectMini: settings.timerObject.mini)
     }
 
     /// No wakeups while idle, paused, or backgrounded. Deadlines remain authoritative.
@@ -156,12 +170,10 @@ import AVFoundation
             if let s = session {
                 if s.status == .finished {
                     toast("Session done")
-                    if settings.voice && isForeground && !isListening {
-                        voice.speak("That’s the whole session. Nice work.")
-                    }
+                    if isForeground && !isListening { announce("That’s the whole session. Nice work.") }
                 } else if let next = s.current {
                     toast("Now: \(next.title)")
-                    if settings.voice && isForeground && !isListening {
+                    if isForeground && !isListening {
                         let lead = (prevBlock?.isBreak == true) ? "Break’s over." : "Time’s up."
                         let line: String
                         if next.isBreak {
@@ -170,13 +182,13 @@ import AVFoundation
                             let goalPart = next.goal.isEmpty ? "" : " \(next.goal)."
                             line = "\(lead) Next: \(next.title).\(goalPart) \(next.minutes) minutes."
                         }
-                        voice.speak(line)
+                        announce(line)
                     }
                 }
             }
         }
         guard isForeground, !isListening, session?.status == .running, transitions == 0 else { lastSecond = nil; return }
-        let second = Int(remaining.rounded(.up))
+        let second = Self.wholeSeconds(remaining)
         if second != lastSecond {
             if lastSecond != nil, second > 0 { audio.tick(odd: second % 2 != 0, sound: settings.tick, haptics: settings.haptics) }
             lastSecond = second
@@ -195,10 +207,18 @@ import AVFoundation
         isForeground = active; lastSecond = nil
         if !active { audio.stop(); voice.stop(); persist() }
         else {
+            audio.resumeAfterForeground()
             now = .now; let autoAdvance = settings.auto; _ = saved.session?.reconcile(at: now, auto: autoAdvance)
             archiveFinished(); persist(); services.sync(session: session, auto: settings.auto)
         }
         updateTicker()
+    }
+
+    /// Speaks a line the app volunteers (block changes, a plan that arrives later), unless spoken replies
+    /// are off or audio is interrupted, such as by a call.
+    private func announce(_ line: String) {
+        guard settings.voice, !audio.isInterrupted else { return }
+        voice.speak(line)
     }
 
     func setListening(_ value: Bool) {
@@ -214,9 +234,30 @@ import AVFoundation
         tick()
         saved.settings = value
         if !value.voice { voice.stop() }
+        applyAppearance()
         persist()
         services.sync(session: session, auto: value.auto)
         updateTicker()
+    }
+
+    /// Choosing an object also selects its matching sounds (each can be changed afterwards).
+    func selectObject(_ id: TimerObjectID) {
+        guard id != settings.object else { return }
+        var value = settings
+        value.selectObject(id)
+        saveSettings(value)
+    }
+
+    func setSound(_ id: String, for role: SoundRole) {
+        var value = settings
+        value.setSound(id, for: role)
+        guard value != settings else { return }
+        saveSettings(value)
+        previewSound(for: role)
+    }
+
+    func previewSound(for role: SoundRole) {
+        audio.preview(SoundCatalog.option(settings.soundID(for: role), for: role))
     }
 
     func propose(words: String, budget: Int = 30) {
@@ -224,7 +265,7 @@ import AVFoundation
         busy = true
         reply = ""
         said = words
-        error = nil
+        if !persistenceBlocked { error = nil } // keep "nothing is being saved" visible
 
         // Preserve the proposal until acceptance commands have been handled.
         if let cmd = matchQuickCommand(words) {
@@ -245,8 +286,8 @@ import AVFoundation
                 busy = false
                 if let plan = result.plan, session?.isActive != true {
                     apply(plan, startImmediately: true)
-                } else if settings.voice, isForeground, !isListening, !result.reply.isEmpty {
-                    voice.speak(result.reply)
+                } else if isForeground, !isListening, !result.reply.isEmpty {
+                    announce(result.reply)
                 }
             } catch {
                 guard !Task.isCancelled else { return }
@@ -328,17 +369,23 @@ import AVFoundation
             cancelGeneration()
             if let first = valid.blocks.first {
                 toast("Now: \(first.title)")
-                if settings.voice && startImmediately && isForeground && !isListening {
+                if startImmediately && isForeground && !isListening {
                     let goalText = first.goal.isEmpty ? "" : " \(first.goal)."
-                    voice.speak(first.isBreak ? "Starting with break, \(first.minutes) minutes." : "First up: \(first.title).\(goalText) \(first.minutes) minutes.")
+                    announce(first.isBreak ? "Starting with break, \(first.minutes) minutes." : "First up: \(first.title).\(goalText) \(first.minutes) minutes.")
                 }
             }
             if startImmediately { startPause() } else { changed() }
         } catch { self.error = error.localizedDescription }
     }
 
-    func setManualMinutes(_ minutes: Int) {
+    /// Applies a dial change. `expectedBlock` is the block that was current when the drag began;
+    /// if a boundary passed mid-drag the change is dropped instead of landing on the next block.
+    /// Returns whether the change was accepted, so the dial can wind back when it was not.
+    @discardableResult func setManualMinutes(_ minutes: Int, expectedBlock: UUID? = nil) -> Bool {
         tick()
+        if let expectedBlock, session?.current?.id != expectedBlock {
+            return false
+        }
         if minutes == 0 {
             if session?.isActive == true {
                 advanceBlockToNext()
@@ -346,7 +393,7 @@ import AVFoundation
                 saved.session = nil
                 changed()
             }
-            return
+            return true
         }
         if var s = saved.session, s.isActive {
             do {
@@ -354,7 +401,11 @@ import AVFoundation
                 saved.session = s
                 toast("\(minutes) minute\(minutes == 1 ? "" : "s") on the timer")
                 changed()
-            } catch { self.error = error.localizedDescription }
+                return true
+            } catch {
+                self.error = error.localizedDescription
+                return false
+            }
         } else {
             let plan = FocusPlan(blocks: [.init(title: "Focus", minutes: minutes)], budgetMinutes: minutes)
             apply(plan, startImmediately: true)
@@ -362,6 +413,7 @@ import AVFoundation
             if settings.voice {
                 voice.speak("Timer set for \(minutes) minute\(minutes == 1 ? "." : "s.")")
             }
+            return session?.isActive == true
         }
     }
 
@@ -396,7 +448,10 @@ import AVFoundation
         let before = saved.session
         saved.session?.extend(at: .now)
         guard saved.session != before else {
-            notice = "This block or session has reached its time limit."
+            // Shown directly: setting `notice` to the same text again would not re-trigger HomeView.
+            let message = "This block or session has reached its time limit."
+            reply = message
+            toast(message)
             return
         }
         toast("Added 5 minutes")

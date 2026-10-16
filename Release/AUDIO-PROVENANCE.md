@@ -18,6 +18,18 @@ The reference embeds a 680 × 680 WebP tomato. `tomato.png` is a decoded copy; t
 
 The haptics are an explicitly requested native addition: alternating transient intensities .22/.18 with sharpness .65/.8; ratchet intensity .35 and sharpness .9. Hardware capability and the user's haptics setting are respected. They are foreground-only and suppressed during microphone capture and audio interruption.
 
+## Selectable sound packs (added 2026-10-15)
+
+Winding, ticking and alarm sounds are chosen separately in Settings. Classic keeps the original files above. Every other option is original and procedurally rendered, with no samples or third-party audio: `Tools/sound_packs/recipes.py` renders seeded noise, biquad filters and modal partials (the same primitives as `Tools/render_audio.py`), and `Tools/sound_packs/finalize.py` writes `Resources/Sounds/*.wav` (48 kHz mono 16-bit PCM).
+
+| Role | Options | Finishing applied |
+|---|---|---|
+| Winding | Felt, Wooden, Chrome spring, Sand pour, Mainspring, Brass, Deep wood | All cut at their -40 dB tail (3 ms fade) so each click ends with its notch; Sand pour and Brass are also capped at 60 ms. Resulting lengths: Felt 8 ms, Wooden 25 ms, Chrome 27 ms, Deep 31 ms, Mainspring 41 ms, Brass 42 ms, Sand 59 ms |
+| Ticking | None, Felt, Woodblock, Chrome egg, Sand patter, Twin-bell clock, Grandfather, Brass | Felt low-passed at 1.8 kHz (level preserved) so it sounds muffled |
+| Alarm | Marimba, Temple blocks, Egg timer bell, Glass chime, Twin bells, Gong, Handbell, Singing bowl | Gong trimmed to 4.5 s and bowl to 5 s with 1.2 s fades; Marimba +5 dB to sit near the others |
+
+All alarms are under 30 s and are bundled, so each is also a valid notification sound. Ticks are skipped while an alarm is ringing. Physical-device listening checks (speaker, AirPods, Silent switch, pocket audibility) are still required for each pack.
+
 ## Distribution status
 
 These assets were supplied through the user's reference artifact. Authorship, asset licensing, and public redistribution rights have not been independently verified. Owner confirmation is required before App Store distribution. No third-party runtime JavaScript is executed by the iOS app; the retained HTML is reference-only and excluded from the app bundle.

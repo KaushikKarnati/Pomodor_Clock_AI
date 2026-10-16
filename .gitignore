@@ -4,3 +4,8 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 .DS_Store
+
+# Sound-pack prototypes (regenerate with Tools/sound_packs/recipes.py)
+Tools/sound_packs/wav/
+Tools/sound_packs/report.json
+Tools/sound_packs/__pycache__/

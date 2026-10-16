@@ -78,13 +78,13 @@ import XCTest
         defer { store.setForeground(false) }
         var last = store.now
         var changes = 0
-        let end = Date.now.addingTimeInterval(2.4)
+        let end = Date.now.addingTimeInterval(3.4)
         while Date.now < end {
             try await Task.sleep(for: .milliseconds(20))
             if store.now != last { changes += 1; last = store.now }
         }
-        XCTAssertGreaterThanOrEqual(changes, 2)
-        XCTAssertLessThanOrEqual(changes, 3)
+        XCTAssertGreaterThanOrEqual(changes, 2) // 1 Hz ticks with up to ~1.4 s of slack
+        XCTAssertLessThanOrEqual(changes, 4)    // 5 Hz would be ~17
     }
 
     func testAIStartsNewPlanButRequiresAcceptanceForReplacement() async {
@@ -123,6 +123,68 @@ import XCTest
         XCTAssertEqual(store.saved.history.first?.id, id)
         XCTAssertEqual(store.saved.history.first?.status, .ended)
     }
+
+    func testDialChangeStartedOnAnEarlierBlockIsNotAppliedToTheNextBlock() {
+        let store = makeStore()
+        store.runDemo()
+        store.propose(words: "start")
+        let first = store.session?.current?.id
+        store.skip()
+        let second = store.session?.current
+        XCTAssertNotEqual(second?.id, first)
+        XCTAssertFalse(store.setManualMinutes(10, expectedBlock: first))
+        XCTAssertEqual(store.session?.current?.minutes, second?.minutes)
+        XCTAssertTrue(store.setManualMinutes(10, expectedBlock: second?.id))
+        XCTAssertEqual(store.session!.secondsLeft(at: .now), 600, accuracy: 1)
+        store.setForeground(false)
+    }
+
+    func testRejectedDialChangeReportsFailure() {
+        let store = makeStore()
+        store.setManualMinutes(25)
+        XCTAssertFalse(store.setManualMinutes(121))
+        XCTAssertEqual(store.session!.secondsLeft(at: .now), 1500, accuracy: 1)
+        store.setForeground(false)
+    }
+
+    func testChoosingAnObjectPersistsItAndLoadsItsSounds() {
+        let disk = MemoryDisk()
+        let audio = RecordingAudio()
+        let store = FocusStore(disk: disk, planner: StubPlanner(), audio: audio, services: StubServices())
+        XCTAssertEqual(audio.selections.last?.alarm, "bell")
+        store.selectObject(.hourglass)
+        XCTAssertEqual(disk.state.settings.object, .hourglass)
+        XCTAssertEqual(audio.selections.last, SoundSelection(wind: "wind-sand", tickOdd: "tick-sand-odd", tickEven: "tick-sand-even", alarm: "alarm-glassChime"))
+        store.setSound("none", for: .tick)
+        XCTAssertNil(audio.selections.last?.tickOdd)
+        XCTAssertFalse(disk.state.settings.tick)
+        store.setSound("gong", for: .alarm)
+        XCTAssertEqual(audio.previews.last?.id, "gong")
+        XCTAssertEqual(audio.selections.last?.alarm, "alarm-gong")
+    }
+
+    func testRepeatedLimitMessageIsPublishedAgain() {
+        let store = makeStore()
+        store.setManualMinutes(60)
+        for _ in 0..<13 { store.extend() }  // 60 → 120 minutes, then one rejected
+        XCTAssertEqual(store.reply, "This block or session has reached its time limit.")
+        store.reply = ""
+        store.extend()
+        XCTAssertEqual(store.reply, "This block or session has reached its time limit.")
+        XCTAssertEqual(store.toastMessage, "This block or session has reached its time limit.")
+        store.setForeground(false)
+    }
+}
+
+@MainActor private final class RecordingAudio: FocusAudioPlaying {
+    var selections: [SoundSelection] = []
+    var previews: [SoundOption] = []
+    func tick(odd: Bool, sound: Bool, haptics: Bool) {}
+    func ratchet(notches: Int, haptics: Bool) {}
+    func bell() {}
+    func stop() {}
+    func configure(_ selection: SoundSelection) { selections.append(selection) }
+    func preview(_ option: SoundOption) { previews.append(option) }
 }
 
 @MainActor private final class MemoryDisk: FocusPersisting {
@@ -285,6 +347,30 @@ final class RatchetPlaybackTests: XCTestCase {
             done.fulfill()
         }
         wait(for: [done], timeout: 3)
+    }
+}
+
+final class TimerDialTests: XCTestCase {
+    func testSmallNudgesDoNotChangeTheTimer() {
+        // 0:35 left: a few points of travel must not skip the block.
+        XCTAssertNil(TimerObjectView.dragResult(start: 35.0 / 60, end: 0.23))
+        // 24:40 left: a nudge that crosses the half minute must not shave off 40 seconds.
+        XCTAssertNil(TimerObjectView.dragResult(start: 24 + 40.0 / 60, end: 24.31))
+        // Landing back on the starting minute changes nothing either.
+        XCTAssertNil(TimerObjectView.dragResult(start: 24.4, end: 23.6))
+        XCTAssertEqual(TimerObjectView.dragResult(start: 24 + 40.0 / 60, end: 24.1), 24)
+        XCTAssertEqual(TimerObjectView.dragResult(start: 10, end: 17.4), 17)
+    }
+
+    func testWindValueFollowsTheWindCurve() {
+        XCTAssertEqual(TimerObjectView.windValue(from: 5, to: 25, elapsed: 0, duration: 1), 5, accuracy: 0.001)
+        XCTAssertEqual(TimerObjectView.windValue(from: 5, to: 25, elapsed: 1, duration: 1), 25, accuracy: 0.001)
+        // Each click is played when the on-screen value crosses its minute.
+        let clicks = TimerObjectView.windClickTimes(from: 5, to: 25, duration: 0.8)
+        XCTAssertEqual(clicks.count, 20)
+        for (offset, time) in clicks.enumerated() {
+            XCTAssertEqual(TimerObjectView.windValue(from: 5, to: 25, elapsed: time, duration: 0.8), Double(6 + offset), accuracy: 0.01)
+        }
     }
 }
 

@@ -13,7 +13,10 @@ Ram Karnati’s development team is configured for both targets. The app was ins
 - Native dial, plan preview, timer, pause/extend/skip/end, and locally persisted session history. Manual multi-block editing and browsing/reusing history are not exposed in the current UI.
 - Apple on-device Speech recognition with editable text and manual fallback. Finishing speech automatically requests a plan. The home-screen mic opens a live glass transcription bubble; no voice sheet.
 - Foundation Models structured planning with availability handling, budget validation, cancellation, and automatic start after successful generation.
-- Original source-derived bell, alternating ticks, ratchet, and mechanical haptics. Settings control ticking sound, spoken replies, and automatic progression; the spoken-reply preference survives relaunch.
+- Original source-derived bell, alternating ticks, ratchet, and mechanical haptics. Settings control spoken replies, haptics, and automatic progression; the spoken-reply preference survives relaunch.
+- Six selectable timer objects: tomato, apple, lemon, chrome egg (twist timers with a rotating minute band), hourglass (sand drains from layered artwork) and twin-bell alarm clock (a 60-minute wedge on its face). Choosing an object also picks its matching sounds.
+- Separate Winding, Ticking (including None) and Alarm sound menus with preview. The chosen alarm is also the notification sound. All sounds are procedurally rendered (`Tools/sound_packs`).
+- The Live Activity shows a miniature of the selected object inside a progress ring. With automatic progression (the default) it counts down the whole session and shows its end time, because the app can't update block details while suspended; with manual progression, or while paused, it shows the block name, and FOCUS/BREAK in manual mode.
 - Persisted timer deadlines, local notifications, and ActivityKit Lock Screen / Dynamic Island presentation.
 
 ## Tests
@@ -24,6 +27,8 @@ xcodebuild -project FocusTalk.xcodeproj -scheme FocusTalk -destination 'platform
 ```
 
 Core tests use an injected clock through explicit dates. UI tests use separate local test storage and exercise real native views. `--ui-testing` and `--reset-ui-state` are Debug-only test arguments; normal user storage is not reset.
+
+`swift test` also checks that every sound and image the catalog names is bundled and registered in the Xcode project. `Tools/objects/README.md` documents how the object artwork was generated and processed.
 
 See `Release/VALIDATION.md` for actual results and unverified physical-device checks. `Release/AUDIO-PROVENANCE.md` documents the exact source parameters and differences. `Release/APP-STORE.md` contains store copy, privacy text, and owner release inputs.
 

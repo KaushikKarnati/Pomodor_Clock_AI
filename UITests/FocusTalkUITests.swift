@@ -56,7 +56,11 @@ final class FocusTalkUITests: XCTestCase {
         capture("03-session-and-settings")
         XCTAssertTrue(app.staticTexts["Session and settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.switches["Read replies aloud"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.switches["Ticking sound"].exists)
+        XCTAssertTrue(app.switches["Haptics"].exists)
+        XCTAssertTrue(app.buttons["Winding"].exists)
+        XCTAssertTrue(app.buttons["Ticking"].exists)
+        XCTAssertTrue(app.buttons["Alarm"].exists)
+        XCTAssertTrue(app.buttons["Timer object Tomato"].exists)
         XCTAssertTrue(app.switches["Start the next block on its own"].exists)
         XCTAssertTrue(app.buttons["Add 5 minutes"].exists)
         XCTAssertTrue(app.buttons["Skip this block"].exists)
@@ -138,6 +142,33 @@ final class FocusTalkUITests: XCTestCase {
         allowNotifications()
         capture("08-manual-dial-running")
         XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor func testChoosingAnObjectChangesTheDialAndItsSounds() {
+        let app = app()
+        app.buttons["Session and settings"].tap()
+        let apple = app.buttons["Timer object Apple"]
+        XCTAssertTrue(apple.waitForExistence(timeout: 5))
+        apple.tap()
+        XCTAssertTrue(apple.isSelected)
+        XCTAssertEqual(app.buttons["Alarm"].value as? String, "Temple blocks")
+        XCTAssertEqual(app.buttons["Ticking"].value as? String, "Woodblock")
+        capture("10-object-apple")
+        app.buttons["Close settings"].tap()
+        XCTAssertEqual(app.otherElements["Tomato timer"].label, "Apple timer")
+
+        // Each object can still use any sound: switch ticking off from the menu.
+        app.buttons["Session and settings"].tap()
+        app.buttons["Ticking"].tap()
+        let none = app.buttons["None"]
+        XCTAssertTrue(none.waitForExistence(timeout: 5))
+        none.tap()
+        XCTAssertEqual(app.buttons["Ticking"].value as? String, "None")
+
+        // Put the default back so later tests and screenshots see the tomato.
+        app.buttons["Timer object Tomato"].tap()
+        app.buttons["Close settings"].tap()
+        XCTAssertEqual(app.otherElements["Tomato timer"].label, "Tomato timer")
     }
 
     @MainActor func testBackgroundDialPresentation() {

@@ -24,12 +24,21 @@ import UserNotifications
         if ProcessInfo.processInfo.arguments.contains("--reset-ui-state") { return SavedState() }
         #endif
         guard FileManager.default.fileExists(atPath: url.path) else { return SavedState() }
-        let state = try JSONDecoder().decode(SavedState.self, from: Data(contentsOf: url))
+        var state = try JSONDecoder().decode(SavedState.self, from: Data(contentsOf: url))
         guard state.version == 1 else { throw PlanError.invalid("This saved file uses a newer version of FocusTalk.") }
-        if let session = state.session {
+        if var session = state.session {
+            session.plan = session.plan.repairingBudget()
+            // If the device clock moved back, a running deadline can sit further away than the time
+            // left; clamp it rather than treating the file as unreadable.
+            if session.status == .running, let deadline = session.deadline, deadline.timeIntervalSinceNow > session.remaining {
+                session.deadline = .now.addingTimeInterval(session.remaining)
+            }
+            state.session = session
             _ = try session.plan.validated()
+            // Blocks are at most 120 minutes; larger values can only come from a damaged file and
+            // would trap when converted to whole seconds for display.
             guard session.index >= 0, session.index <= session.plan.blocks.count,
-                  session.remaining.isFinite, session.remaining >= 0,
+                  session.remaining.isFinite, session.remaining >= 0, session.remaining <= 120 * 60,
                   (session.status != .running || session.deadline != nil),
                   (!session.isActive || session.index < session.plan.blocks.count) else { throw PlanError.invalid("The saved timer could not be read safely.") }
         }
@@ -64,57 +73,134 @@ import UserNotifications
 @MainActor protocol SessionServing {
     func requestNotifications() async -> Bool
     func sync(session: FocusSession?, auto: Bool)
+    /// The chosen alarm (bundle file name without extension) and the selected object's mini asset.
+    func setAppearance(alarmFile: String, objectMini: String)
+}
+extension SessionServing {
+    func setAppearance(alarmFile: String, objectMini: String) {}
 }
 
 @MainActor final class SessionServices: NSObject, UNUserNotificationCenterDelegate, SessionServing {
     private var syncTask: Task<Void, Never>?
-    override init() { super.init(); UNUserNotificationCenter.current().delegate = self }
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions { [] }
+    private var alarmFile = "bell"
+    private var objectMini = "mini-tomato"
+    /// The Live Activity last requested: its session, what it covered (a block index, or -1 for the whole
+    /// session with automatic progression) and when. Kept across launches, so a card the person swiped
+    /// away doesn't come back just because the app was relaunched.
+    private var shownCard: (session: String, scope: Int, since: Date)? {
+        get {
+            let defaults = UserDefaults.standard
+            guard let session = defaults.string(forKey: "liveActivity.session") else { return nil }
+            return (session, defaults.integer(forKey: "liveActivity.scope"),
+                    Date(timeIntervalSince1970: defaults.double(forKey: "liveActivity.since")))
+        }
+        set {
+            let defaults = UserDefaults.standard
+            defaults.set(newValue?.session, forKey: "liveActivity.session")
+            defaults.set(newValue?.scope, forKey: "liveActivity.scope")
+            defaults.set(newValue?.since.timeIntervalSince1970, forKey: "liveActivity.since")
+        }
+    }
+    private var enablementTask: Task<Void, Never>?
+    private var lastSync: (session: FocusSession?, auto: Bool)?
+    override init() {
+        super.init()
+        UNUserNotificationCenter.current().delegate = self
+        // Turning Live Activities off and on removes the card; that isn't the person swiping it away.
+        // When they come back on, show the card again straight away.
+        enablementTask = Task { [weak self] in
+            for await enabled in ActivityAuthorizationInfo().activityEnablementUpdates {
+                guard let self else { return }
+                self.shownCard = nil
+                if enabled, let last = self.lastSync { self.sync(session: last.session, auto: last.auto) }
+            }
+        }
+    }
+    /// The app rings its own bell while in the foreground, including when merely inactive (Control Center,
+    /// a call banner). When inactive, also show the banner in case the in-app tick raced the trigger.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        await MainActor.run { () -> UNNotificationPresentationOptions in
+            UIApplication.shared.applicationState == .active ? [] : [.banner, .list]
+        }
+    }
     func requestNotifications() async -> Bool {
         (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) ?? false
     }
+    func setAppearance(alarmFile: String, objectMini: String) {
+        // A missing file would silently fall back to the system sound, so verify it is bundled.
+        self.alarmFile = Bundle.main.url(forResource: alarmFile, withExtension: "wav") == nil ? "bell" : alarmFile
+        self.objectMini = objectMini
+    }
     func sync(session: FocusSession?, auto: Bool) {
+        lastSync = (session, auto)
         syncTask?.cancel()
+        let alarmSound = UNNotificationSound(named: .init(rawValue: "\(alarmFile).wav"))
+        let mini = objectMini
         syncTask = Task {
             let center = UNUserNotificationCenter.current()
             let requestGeneration = UUID().uuidString
             center.removeAllPendingNotificationRequests()
             center.removeAllDeliveredNotifications()
             if let session {
-                for (index, boundary) in session.boundaries(auto: auto).enumerated() where boundary.0 > .now {
+                let boundaries = session.boundaries(auto: auto)
+                for (index, boundary) in boundaries.enumerated() where boundary.0 > .now {
                     guard !Task.isCancelled else { return }
                     let content = UNMutableNotificationContent()
                     content.title = "\(boundary.1) finished"
-                    content.body = auto ? "Your focus session is progressing. Open FocusTalk to see what's next." : "Ready for the next block? Open FocusTalk and tap Start."
-                    content.sound = UNNotificationSound(named: .init(rawValue: "bell.wav"))
+                    let isLastBlock = session.index + index == session.plan.blocks.count - 1
+                    content.body = isLastBlock ? "That’s the whole session. Nice work."
+                        : auto ? "Your focus session is progressing. Open FocusTalk to see what's next."
+                        : "Ready for the next block? Open FocusTalk and tap Start."
+                    content.sound = alarmSound
                     let request = UNNotificationRequest(identifier: "\(requestGeneration)-\(session.id)-\(index)", content: content, trigger: UNTimeIntervalNotificationTrigger(timeInterval: max(1, boundary.0.timeIntervalSinceNow), repeats: false))
                     try? await center.add(request)
                     if Task.isCancelled { center.removePendingNotificationRequests(withIdentifiers: [request.identifier]); return }
                 }
             }
             guard !Task.isCancelled else { return }
-            await updateActivity(session, auto: auto)
+            await updateActivity(session, auto: auto, mini: mini)
         }
     }
-    private func updateActivity(_ session: FocusSession?, auto: Bool) async {
+    private func updateActivity(_ session: FocusSession?, auto: Bool, mini: String) async {
         guard let session, session.isActive, let block = session.current else {
             for activity in Activity<SessionActivityAttributes>.activities { await activity.end(nil, dismissalPolicy: .immediate) }; return
         }
         let end = session.deadline ?? Date.now.addingTimeInterval(session.remaining)
-        let finalEnd = end.addingTimeInterval(session.plan.blocks.dropFirst(session.index + 1).reduce(0) { $0 + $1.seconds })
-        // With automatic progression, count down the full session so the system can
-        // keep updating accurately without requiring background app execution.
-        let displayEnd = auto ? finalEnd : end
-        let displayRemaining = session.secondsLeft(at: .now) + (auto ? session.plan.blocks.dropFirst(session.index + 1).reduce(0) { $0 + $1.seconds } : 0)
-        let duration = auto ? Double(session.plan.totalMinutes * 60) : block.seconds
-        let content = ActivityContent(state: SessionActivityAttributes.ContentState(start: displayEnd.addingTimeInterval(-duration), title: block.title, end: displayEnd, sessionEnd: finalEnd, isRunning: session.status == .running, remaining: displayRemaining, position: "\(session.index + 1) of \(session.plan.blocks.count)"), staleDate: session.status == .running ? displayEnd : nil)
+        let later = session.plan.blocks.dropFirst(session.index + 1).reduce(0) { $0 + $1.seconds }
+        let finalEnd = end.addingTimeInterval(later)
+        // With automatic progression, count down the full session so the system can keep updating
+        // accurately without background execution. While paused nothing advances, so show the block.
+        let sessionLevel = auto && session.status == .running
+        let displayEnd = sessionLevel ? finalEnd : end
+        let displayRemaining = session.secondsLeft(at: .now) + (sessionLevel ? later : 0)
+        let duration = sessionLevel ? Double(session.plan.totalMinutes * 60) : block.seconds
+        let content = ActivityContent(state: SessionActivityAttributes.ContentState(start: displayEnd.addingTimeInterval(-duration), title: block.title, end: displayEnd, sessionEnd: finalEnd, isRunning: session.status == .running, remaining: displayRemaining, position: "\(session.index + 1) of \(session.plan.blocks.count)", objectMini: mini, isBreak: block.isBreak, auto: sessionLevel, isLastBlock: session.index == session.plan.blocks.count - 1), staleDate: session.status == .running ? displayEnd : nil)
         for activity in Activity<SessionActivityAttributes>.activities where activity.attributes.sessionID != session.id.uuidString {
             await activity.end(nil, dismissalPolicy: .immediate)
         }
         guard !Task.isCancelled else { return }
-        if let existing = Activity<SessionActivityAttributes>.activities.first(where: { $0.attributes.sessionID == session.id.uuidString }) { await existing.update(content) }
-        else if ActivityAuthorizationInfo().areActivitiesEnabled {
-            _ = try? Activity.request(attributes: SessionActivityAttributes(sessionID: session.id.uuidString), content: content, pushType: nil)
+        let id = session.id.uuidString
+        let scope = auto ? -1 : session.index
+        let mine = Activity<SessionActivityAttributes>.activities.filter { $0.attributes.sessionID == id }
+        if let existing = mine.first(where: { $0.activityState == .active || $0.activityState == .stale }) {
+            await existing.update(content)
+            // The card carries on to the next block; a swipe from now on applies to this block.
+            if let card = shownCard, card.session == id { shownCard = (id, scope, card.since) } else { shownCard = (id, scope, .now) }
+        } else if !ActivityAuthorizationInfo().areActivitiesEnabled {
+            shownCard = nil   // Live Activities are off; whatever removed the card, it wasn't a swipe.
+        } else {
+            // Gone while still covering what it was shown for, before the system's 8-hour limit: the
+            // person swiped it away, so leave it. Anything else (a cleared TIME'S UP card in manual mode,
+            // a card the system ended, a failed request) gets a fresh card.
+            let swipedAway = mine.allSatisfy { $0.activityState == .dismissed }
+                && shownCard.map { $0.session == id && $0.scope == scope && Date.now.timeIntervalSince($0.since) < 8 * 3600 } == true
+            if !swipedAway {
+                for ended in mine { await ended.end(nil, dismissalPolicy: .immediate) }
+                shownCard = nil
+                if (try? Activity.request(attributes: SessionActivityAttributes(sessionID: id), content: content, pushType: nil)) != nil {
+                    shownCard = (id, scope, .now)
+                }
+            }
         }
     }
 }

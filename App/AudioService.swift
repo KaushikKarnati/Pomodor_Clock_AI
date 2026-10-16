@@ -6,9 +6,24 @@ import UIKit
     func ratchet(notches: Int, haptics: Bool)
     func bell()
     func stop()
+    /// Loads the person's chosen winding, ticking and alarm sounds.
+    func configure(_ selection: SoundSelection)
+    /// Plays one option once so it can be auditioned in Settings.
+    func preview(_ option: SoundOption)
+    /// Clears a stale interruption: iOS does not promise an `.ended` for every `.began`.
+    func resumeAfterForeground()
+    /// Audio is interrupted (a call, Siri, an alarm), so automatic announcements should stay quiet too.
+    var isInterrupted: Bool { get }
+}
+extension FocusAudioPlaying {
+    func configure(_ selection: SoundSelection) {}
+    func preview(_ option: SoundOption) {}
+    func resumeAfterForeground() {}
+    var isInterrupted: Bool { false }
 }
 @MainActor final class AudioService: FocusAudioPlaying {
     private let sounds = SoundPlayers()
+    private var selection: SoundSelection?
     private let ratchetFeedback = UIImpactFeedbackGenerator(style: .rigid)
     private let tickOddFeedback = UIImpactFeedbackGenerator(style: .medium)
     private let tickEvenFeedback = UIImpactFeedbackGenerator(style: .light)
@@ -20,6 +35,8 @@ import UIKit
     init() {
         interruptionObserver = NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] notification in
             let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+            // A `.began` that is never followed by `.ended` (the app was suspended mid-interruption) is
+            // cleared by resumeAfterForeground() when the app comes back.
             Task { @MainActor in
                 guard let self else { return }
                 self.interrupted = raw == AVAudioSession.InterruptionType.began.rawValue
@@ -39,8 +56,9 @@ import UIKit
         AudioSessionCoordinator.shared.prepareAmbient()
     }
 
-    private func play(_ name: String, repeats: Int = 1, rate: Float = 1) {
-        guard !interrupted, UIApplication.shared.applicationState == .active else { return }
+    private func play(_ name: String, repeats: Int = 1, rate: Float = 1, allowInactive: Bool = false) {
+        let state = UIApplication.shared.applicationState
+        guard !interrupted, state == .active || (allowInactive && state == .inactive) else { return }
         let sounds = self.sounds
         AudioSessionCoordinator.shared.perform { sounds.play(name, repeats: repeats, rate: rate) }
     }
@@ -66,12 +84,37 @@ import UIKit
         }
     }
 
-    func bell() { play("bell") }
+    /// A block end must be heard even with Control Center or a banner over the app.
+    func bell() { play("bell", allowInactive: true) }
 
     func stop() {
         ratchetCadence = RatchetCadence()
         let sounds = self.sounds
         AudioSessionCoordinator.shared.perform { sounds.stop() }
+    }
+
+    var isInterrupted: Bool { interrupted }
+
+    /// Coming back from the background. Without CallKit there is no reliable way to tell a call that is
+    /// still going on from a stale interruption (another app's music looks the same), and staying muted
+    /// would silence block ends, so clear it.
+    func resumeAfterForeground() {
+        interrupted = false
+        ambient()
+    }
+
+    func configure(_ selection: SoundSelection) {
+        guard selection != self.selection else { return }
+        self.selection = selection
+        let sounds = self.sounds
+        AudioSessionCoordinator.shared.perform { sounds.load(selection) }
+    }
+
+    func preview(_ option: SoundOption) {
+        guard !interrupted, UIApplication.shared.applicationState == .active, !option.files.isEmpty else { return }
+        let files = option.files
+        let sounds = self.sounds
+        AudioSessionCoordinator.shared.perform { sounds.preview(files) }
     }
 }
 
@@ -105,23 +148,58 @@ protocol AudioClipPlaying: AnyObject {
 }
 extension AVAudioPlayer: AudioClipPlaying {}
 
+/// Players are keyed by role ("ratchet", "tickOdd", "tickEven", "bell"); each role plays
+/// whichever file the person selected. The Classic files keep the original names.
 final class SoundPlayers: @unchecked Sendable {
     private var players: [String: any AudioClipPlaying]
+    private var files: [String: String] = ["tickOdd": "tickOdd", "tickEven": "tickEven", "ratchet": "ratchet", "bell": "bell"]
+    private var previewPlayer: AVAudioPlayer?
     init(players: [String: any AudioClipPlaying] = [:]) { self.players = players }
     func prepare() {
         dispatchPrecondition(condition: .notOnQueue(.main))
-        for name in ["tickOdd", "tickEven", "ratchet", "bell"] {
-            if let url = Bundle.main.url(forResource: name, withExtension: "wav"),
-               let player = try? AVAudioPlayer(contentsOf: url) {
-                player.enableRate = name == "ratchet"
-                player.prepareToPlay()
-                players[name] = player
-            }
+        for (role, file) in files where players[role] == nil {
+            players[role] = Self.makePlayer(file, role: role)
         }
+    }
+    /// Swaps only the roles whose file changed. A role with no file (ticking off) is silent.
+    func load(_ selection: SoundSelection) {
+        dispatchPrecondition(condition: .notOnQueue(.main))
+        let wanted: [String: String?] = ["ratchet": selection.wind, "tickOdd": selection.tickOdd, "tickEven": selection.tickEven, "bell": selection.alarm]
+        for (role, file) in wanted {
+            guard let file else { players[role]?.stop(); players[role] = nil; files[role] = nil; continue }
+            guard files[role] != file || players[role] == nil else { continue }
+            players[role]?.stop()
+            files[role] = file
+            players[role] = Self.makePlayer(file, role: role)
+        }
+    }
+    func preview(_ fileNames: [String]) {
+        dispatchPrecondition(condition: .notOnQueue(.main))
+        previewPlayer?.stop()
+        pairedPreview?.stop()
+        pairedPreview = nil
+        // Ticks preview as a short odd/even pair so their alternation can be heard.
+        guard let first = fileNames.first, let player = Self.makePlayer(first, role: "preview") else { return }
+        previewPlayer = player
+        player.play()
+        if fileNames.count == 2, let second = Self.makePlayer(fileNames[1], role: "preview") {
+            second.play(atTime: player.deviceCurrentTime + 0.5)
+            pairedPreview = second
+        }
+    }
+    private var pairedPreview: AVAudioPlayer?
+    private static func makePlayer(_ file: String, role: String) -> AVAudioPlayer? {
+        guard let url = Bundle.main.url(forResource: file, withExtension: "wav"),
+              let player = try? AVAudioPlayer(contentsOf: url) else { return nil }
+        player.enableRate = role == "ratchet"
+        player.prepareToPlay()
+        return player
     }
     func play(_ name: String, repeats: Int = 1, rate: Float = 1) {
         dispatchPrecondition(condition: .notOnQueue(.main))
         if name == "bell" { players["tickOdd"]?.stop(); players["tickEven"]?.stop() }
+        // Ticks wait for a ringing alarm (alarms run 2–5 s) instead of talking over it.
+        if name == "tickOdd" || name == "tickEven", players["bell"]?.isPlaying == true { return }
         guard let player = players[name] else { return }
         // Adjust an active burst without rewinding its audible transient.
         // Finite loops keep the tail below 66 ms without timers or a backlog.
@@ -134,6 +212,8 @@ final class SoundPlayers: @unchecked Sendable {
     func stop() {
         dispatchPrecondition(condition: .notOnQueue(.main))
         players.values.forEach { $0.stop() }
+        previewPlayer?.stop()
+        pairedPreview?.stop()
     }
 }
 
