@@ -119,6 +119,22 @@ final class TimerThemeTests: XCTestCase {
         }
     }
 
+    /// ActivityKit may refuse to start an activity whose images are larger than the presentation they
+    /// appear in: 80 pt minis for the Lock Screen card, 24 pt for the Dynamic Island's compact/minimal.
+    func testLiveActivityMinisStayWithinTheirPresentationSize() throws {
+        let widget = repo.appendingPathComponent("Widget/Assets.xcassets")
+        for info in TimerObjectInfo.all {
+            for (asset, points) in [(info.mini, 80), (info.mini + "-small", 24)] {
+                for scale in [2, 3] {
+                    let png = try Data(contentsOf: widget.appendingPathComponent("\(asset).imageset/\(asset)@\(scale)x.png"))
+                    // IHDR: width and height are big-endian UInt32s at bytes 16 and 20.
+                    let size = [16, 20].map { offset in png[offset..<offset + 4].reduce(0) { $0 << 8 | Int($1) } }
+                    XCTAssertEqual(size, [points * scale, points * scale], "\(asset)@\(scale)x")
+                }
+            }
+        }
+    }
+
     func testDialGeometryStaysInsideTheArtworkFrame() {
         for info in TimerObjectInfo.all {
             switch info.style {

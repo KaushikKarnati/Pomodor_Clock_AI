@@ -54,13 +54,13 @@ private struct Presentation {
                     BlockLabel(presentation: presentation)
                 }
             } compactLeading: {
-                ObjectDial(presentation: presentation).frame(width: 24, height: 24)
+                ObjectDial(presentation: presentation, small: true).frame(width: 24, height: 24)
             } compactTrailing: {
                 RemainingTime(presentation: presentation)
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .frame(maxWidth: 64, alignment: .trailing)
             } minimal: {
-                ObjectDial(presentation: presentation).frame(width: 22, height: 22)
+                ObjectDial(presentation: presentation, small: true).frame(width: 22, height: 22)
             }.keylineTint(presentation.tint)
         }
     }
@@ -132,6 +132,9 @@ private struct RemainingTime: View {
 /// A miniature of the selected timer object inside a system-driven progress ring.
 private struct ObjectDial: View {
     let presentation: Presentation
+    /// The compact and minimal Dynamic Island regions need an image no larger than they are, or the
+    /// system may refuse to start the activity; they use the 24 pt `-small` set.
+    var small = false
     var body: some View {
         let state = presentation.state
         GeometryReader { geometry in
@@ -149,7 +152,7 @@ private struct ObjectDial: View {
                 }
                 .progressViewStyle(.circular)
                 .tint(presentation.tint)
-                Image(state.objectMini ?? "mini-tomato")
+                Image((state.objectMini ?? "mini-tomato") + (small ? "-small" : ""))
                     .resizable()
                     .scaledToFit()
                     .padding(size * 0.2)

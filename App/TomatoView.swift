@@ -115,9 +115,11 @@ struct TimerObjectView: View {
                             dragBlockID = blockID
                             lastNotch = Int(start.rounded())
                         }
-                        let next = min(60, max(0, (dragStart ?? 0) - value.translation.width / pixelsPerMinute(side: side)))
+                        let start = dragStart ?? 0
+                        let next = min(60, max(0, start - value.translation.width / pixelsPerMinute(side: side)))
                         dragValue = next
-                        let notch = Int(next.rounded())
+                        // Click only where lifting the finger would set that minute (the same rule as onEnded).
+                        let notch = Int(Self.dragResult(start: start, end: next) ?? start.rounded())
                         if notch != lastNotch {
                             let crossed = abs(notch - (lastNotch ?? notch))
                             lastNotch = notch
@@ -248,18 +250,16 @@ struct TimerObjectView: View {
         }
     }
 
-    /// When the eased wind crosses each whole minute. The curve (0.16, 1, 0.3, 1) has y(s) = 1 - (1 - s)^3,
-    /// so the parameter for progress p is s = 1 - (1 - p)^(1/3); x(s) gives the time fraction.
     /// The minutes a drag from `start` to `end` sets, or nil for a nudge: under half a minute of
     /// travel, or landing back on the starting minute.
-    static func dragResult(start: Double, end: Double) -> Double? {
+    nonisolated static func dragResult(start: Double, end: Double) -> Double? {
         let snapped = end.rounded()
         guard abs(end - start) >= 0.5, snapped != start.rounded() else { return nil }
         return snapped
     }
 
     /// The value on screen `elapsed` seconds into a wind: the inverse of the curve `windClickTimes` uses.
-    static func windValue(from: Double, to destination: Double, elapsed: Double, duration: Double) -> Double {
+    nonisolated static func windValue(from: Double, to destination: Double, elapsed: Double, duration: Double) -> Double {
         let t = min(1, max(0, elapsed / duration))
         var low = 0.0, high = 1.0
         for _ in 0..<24 {
@@ -271,7 +271,9 @@ struct TimerObjectView: View {
         return from + (destination - from) * (1 - pow(1 - s, 3))
     }
 
-    static func windClickTimes(from: Double, to destination: Double, duration: Double) -> [Double] {
+    /// When the eased wind crosses each whole minute. The curve (0.16, 1, 0.3, 1) has y(s) = 1 - (1 - s)^3,
+    /// so the parameter for progress p is s = 1 - (1 - p)^(1/3); x(s) gives the time fraction.
+    nonisolated static func windClickTimes(from: Double, to destination: Double, duration: Double) -> [Double] {
         guard abs(destination - from) > 0.001 else { return [] }
         let minutes: [Int]
         if destination > from {
@@ -390,7 +392,7 @@ private struct HourglassArtwork: View, Animatable {
 
     private static let sandTop = 150.0
     private static let neck = 326.0
-    private static let pileTip = 486.0
+    private static let pileTip = 500.0
     private static let pileBottom = 570.0
     private static let pileCenterX = 341.5
 

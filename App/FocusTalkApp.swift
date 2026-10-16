@@ -14,6 +14,7 @@ import UIKit
                 .onChange(of: scenePhase) { old, phase in
                     if phase == .background { store.setForeground(false) }
                     else if old == .background { store.setForeground(true) }
+                    else if phase == .active { store.resumeAudio() }
                 }
         }
     }

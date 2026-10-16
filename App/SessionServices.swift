@@ -84,8 +84,23 @@ extension SessionServing {
     private var syncTask: Task<Void, Never>?
     private var alarmFile = "bell"
     private var objectMini = "mini-tomato"
-    /// Sessions this run has shown a Live Activity for. If that card is gone, the person swiped it away.
-    private var activitySessions: Set<String> = []
+    /// The Live Activity last requested: its session, what it covered (a block index, or -1 for the whole
+    /// session with automatic progression) and when. Kept across launches, so a card the person swiped
+    /// away doesn't come back just because the app was relaunched.
+    private var shownCard: (session: String, scope: Int, since: Date)? {
+        get {
+            let defaults = UserDefaults.standard
+            guard let session = defaults.string(forKey: "liveActivity.session") else { return nil }
+            return (session, defaults.integer(forKey: "liveActivity.scope"),
+                    Date(timeIntervalSince1970: defaults.double(forKey: "liveActivity.since")))
+        }
+        set {
+            let defaults = UserDefaults.standard
+            defaults.set(newValue?.session, forKey: "liveActivity.session")
+            defaults.set(newValue?.scope, forKey: "liveActivity.scope")
+            defaults.set(newValue?.since.timeIntervalSince1970, forKey: "liveActivity.since")
+        }
+    }
     override init() { super.init(); UNUserNotificationCenter.current().delegate = self }
     /// The app rings its own bell while in the foreground, including when merely inactive (Control Center,
     /// a call banner). When inactive, also show the banner in case the in-app tick raced the trigger.
@@ -136,27 +151,38 @@ extension SessionServing {
             for activity in Activity<SessionActivityAttributes>.activities { await activity.end(nil, dismissalPolicy: .immediate) }; return
         }
         let end = session.deadline ?? Date.now.addingTimeInterval(session.remaining)
-        let finalEnd = end.addingTimeInterval(session.plan.blocks.dropFirst(session.index + 1).reduce(0) { $0 + $1.seconds })
-        // With automatic progression, count down the full session so the system can
-        // keep updating accurately without requiring background app execution.
-        let displayEnd = auto ? finalEnd : end
-        let displayRemaining = session.secondsLeft(at: .now) + (auto ? session.plan.blocks.dropFirst(session.index + 1).reduce(0) { $0 + $1.seconds } : 0)
-        let duration = auto ? Double(session.plan.totalMinutes * 60) : block.seconds
-        let content = ActivityContent(state: SessionActivityAttributes.ContentState(start: displayEnd.addingTimeInterval(-duration), title: block.title, end: displayEnd, sessionEnd: finalEnd, isRunning: session.status == .running, remaining: displayRemaining, position: "\(session.index + 1) of \(session.plan.blocks.count)", objectMini: mini, isBreak: block.isBreak, auto: auto, isLastBlock: session.index == session.plan.blocks.count - 1), staleDate: session.status == .running ? displayEnd : nil)
+        let later = session.plan.blocks.dropFirst(session.index + 1).reduce(0) { $0 + $1.seconds }
+        let finalEnd = end.addingTimeInterval(later)
+        // With automatic progression, count down the full session so the system can keep updating
+        // accurately without background execution. While paused nothing advances, so show the block.
+        let sessionLevel = auto && session.status == .running
+        let displayEnd = sessionLevel ? finalEnd : end
+        let displayRemaining = session.secondsLeft(at: .now) + (sessionLevel ? later : 0)
+        let duration = sessionLevel ? Double(session.plan.totalMinutes * 60) : block.seconds
+        let content = ActivityContent(state: SessionActivityAttributes.ContentState(start: displayEnd.addingTimeInterval(-duration), title: block.title, end: displayEnd, sessionEnd: finalEnd, isRunning: session.status == .running, remaining: displayRemaining, position: "\(session.index + 1) of \(session.plan.blocks.count)", objectMini: mini, isBreak: block.isBreak, auto: sessionLevel, isLastBlock: session.index == session.plan.blocks.count - 1), staleDate: session.status == .running ? displayEnd : nil)
         for activity in Activity<SessionActivityAttributes>.activities where activity.attributes.sessionID != session.id.uuidString {
             await activity.end(nil, dismissalPolicy: .immediate)
         }
         guard !Task.isCancelled else { return }
-        // The system can end an activity on its own (8-hour limit). Updating an ended one does nothing, so
-        // replace it instead of keeping a frozen card. A card the person swiped away stays away.
         let id = session.id.uuidString
+        let scope = auto ? -1 : session.index
         let mine = Activity<SessionActivityAttributes>.activities.filter { $0.attributes.sessionID == id }
-        let dismissed = mine.contains { $0.activityState == .dismissed } || (mine.isEmpty && activitySessions.contains(id))
-        if let existing = mine.first(where: { $0.activityState == .active || $0.activityState == .stale }) { await existing.update(content) }
-        else if !dismissed, ActivityAuthorizationInfo().areActivitiesEnabled {
-            for ended in mine { await ended.end(nil, dismissalPolicy: .immediate) }
-            if (try? Activity.request(attributes: SessionActivityAttributes(sessionID: id), content: content, pushType: nil)) != nil {
-                activitySessions.insert(id)
+        if let existing = mine.first(where: { $0.activityState == .active || $0.activityState == .stale }) {
+            await existing.update(content)
+            // The card carries on to the next block; a swipe from now on applies to this block.
+            if let card = shownCard, card.session == id { shownCard = (id, scope, card.since) } else { shownCard = (id, scope, .now) }
+        } else {
+            // Gone while still covering what it was shown for, before the system's 8-hour limit: the
+            // person swiped it away, so leave it. Anything else (a cleared TIME'S UP card in manual mode,
+            // a card the system ended, a failed request) gets a fresh card.
+            let swipedAway = mine.allSatisfy { $0.activityState == .dismissed }
+                && shownCard.map { $0.session == id && $0.scope == scope && Date.now.timeIntervalSince($0.since) < 8 * 3600 } == true
+            if !swipedAway, ActivityAuthorizationInfo().areActivitiesEnabled {
+                for ended in mine { await ended.end(nil, dismissalPolicy: .immediate) }
+                shownCard = nil
+                if (try? Activity.request(attributes: SessionActivityAttributes(sessionID: id), content: content, pushType: nil)) != nil {
+                    shownCard = (id, scope, .now)
+                }
             }
         }
     }
